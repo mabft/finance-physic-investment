@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+*.pyo
+.Python
+.cache/
+output/
+config/holdings.json
+node_modules/
+frontend/dist/
+.DS_Store
+.vscode/
+*.egg-info/
+requirements.txt
+*.log
