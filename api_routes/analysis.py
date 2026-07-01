@@ -5,6 +5,7 @@ from physics_metrics import batch_analyze, compute_all_metrics, classify_market_
 from data_fetcher import DataFetcher
 from report_generator import ReportGenerator
 from main import AnalysisEngine
+from api_routes.config import load_holdings
 
 router = APIRouter()
 
@@ -30,11 +31,20 @@ async def compute_analysis(request: AnalysisRequest):
 @router.get("/all")
 async def analyze_all():
     try:
-        price_data = engine.fetcher.get_price_series_for_analysis()
+        holdings = load_holdings()
+        
+        if holdings:
+            price_data = engine.fetcher.get_price_series_by_codes(holdings)
+        else:
+            price_data = engine.fetcher.get_price_series_for_analysis()
+        
         if not price_data:
             return {"error": "未能获取价格数据"}, 500
         
         raw_results = batch_analyze(price_data)
+        
+        code_to_name = {h.get('code', ''): h.get('name', '') for h in holdings}
+        name_to_code = {h.get('name', ''): h.get('code', '') for h in holdings}
         
         results = []
         for name, data in raw_results.items():
@@ -50,8 +60,14 @@ async def analyze_all():
             
             prices = price_data.get(name, [])[-30:]
             
+            display_name = name
+            if name in code_to_name:
+                display_name = code_to_name[name] or name
+            elif name in name_to_code:
+                display_name = name
+            
             results.append({
-                "name": name,
+                "name": display_name,
                 "metrics": simple_metrics,
                 "state": state_str,
                 "screen_score": data.get("screen_score", 0),

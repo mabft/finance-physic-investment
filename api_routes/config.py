@@ -22,7 +22,11 @@ def load_holdings():
     if os.path.exists(CONFIG_FILE):
         with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
             data = json.load(f)
-            return data.get("holdings", [])
+            holdings = data.get("holdings", [])
+            for holding in holdings:
+                if not holding.get("name"):
+                    holding["name"] = get_instrument_name(holding.get("code", ""))
+            return holdings
     return []
 
 
@@ -76,7 +80,11 @@ async def add_holding(holding: Holding):
         if existing:
             return {"success": False, "message": "该标的已存在"}, 400
         
-        holdings.append(holding.dict())
+        holding_dict = holding.dict()
+        if not holding_dict.get("name"):
+            holding_dict["name"] = get_instrument_name(holding_dict.get("code", ""))
+        
+        holdings.append(holding_dict)
         save_holdings(holdings)
         return {"success": True, "message": "标的添加成功"}
     except Exception as e:

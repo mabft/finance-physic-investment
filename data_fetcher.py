@@ -218,6 +218,30 @@ class DataFetcher:
 
         return price_series
 
+    def get_price_series_by_codes(self, holdings):
+        price_series = {}
+
+        for holding in holdings:
+            code = holding.get('code', '')
+            name = holding.get('name', '')
+            if not code:
+                continue
+            
+            if (code.startswith('6') or code.startswith('5')) and len(code) == 6:
+                symbol = f"sh{code}"
+            elif (code.startswith('0') or code.startswith('3')) and len(code) == 6:
+                symbol = f"sz{code}"
+            else:
+                continue
+
+            prices = self.fetch_sina_kline(symbol)
+            if prices and len(prices) >= 30:
+                key = name if name else code
+                price_series[key] = prices
+            time.sleep(0.3)
+
+        return price_series
+
 
 if __name__ == "__main__":
     fetcher = DataFetcher()
