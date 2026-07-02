@@ -1,4 +1,4 @@
-import { LayoutDashboard, Settings, FileText, TrendingUp } from 'lucide-react';
+import { LayoutDashboard, Settings, FileText, TrendingUp, BookOpen } from 'lucide-react';
 
 interface SidebarProps {
   currentPage: string;
@@ -9,6 +9,7 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
   const menuItems = [
     { id: 'dashboard', label: '首页', icon: LayoutDashboard },
     { id: 'holdings', label: '持仓配置', icon: Settings },
+    { id: 'interpretation', label: '数据解读', icon: BookOpen },
     { id: 'reports', label: '报告中心', icon: FileText },
   ];
 

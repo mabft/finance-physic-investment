@@ -4,6 +4,7 @@ import { Header } from '@/components/Layout/Header';
 import { Dashboard } from '@/pages/Dashboard';
 import { Holdings } from '@/pages/Holdings';
 import { Reports } from '@/pages/Reports';
+import { Interpretation } from '@/pages/Interpretation';
 import { useAppStore } from '@/store';
 
 export default function App() {
@@ -31,6 +32,8 @@ export default function App() {
         return <Holdings />;
       case 'reports':
         return <Reports />;
+      case 'interpretation':
+        return <Interpretation />;
       default:
         return <Dashboard />;
     }

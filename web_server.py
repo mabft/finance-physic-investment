@@ -15,7 +15,7 @@ app.add_middleware(
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-from api_routes import data_router, analysis_router, config_router, reports_router
+from api_routes import data_router, analysis_router, config_router, reports_router, interpretation_router
 
 @app.get("/api/health")
 async def health_check():
@@ -25,6 +25,7 @@ app.include_router(data_router, prefix="/api/data", tags=["数据"])
 app.include_router(analysis_router, prefix="/api/analysis", tags=["分析"])
 app.include_router(config_router, prefix="/api/config", tags=["配置"])
 app.include_router(reports_router, prefix="/api/reports", tags=["报告"])
+app.include_router(interpretation_router, prefix="/api/interpretation", tags=["解读"])
 
 frontend_dir = os.path.join(BASE_DIR, "frontend", "dist")
 if os.path.exists(frontend_dir):
