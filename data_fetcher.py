@@ -220,27 +220,65 @@ class DataFetcher:
 
     def get_price_series_by_codes(self, holdings):
         price_series = {}
+        realtime_data = {}
 
+        symbols = []
+        code_to_symbol = {}
         for holding in holdings:
             code = holding.get('code', '')
             name = holding.get('name', '')
             if not code:
                 continue
-            
             if (code.startswith('6') or code.startswith('5')) and len(code) == 6:
                 symbol = f"sh{code}"
             elif (code.startswith('0') or code.startswith('3')) and len(code) == 6:
                 symbol = f"sz{code}"
             else:
                 continue
+            symbols.append(symbol)
+            code_to_symbol[code] = symbol
+
+        if symbols:
+            realtime_data = self.fetch_sina_realtime(symbols)
+            time.sleep(0.5)
+
+        for holding in holdings:
+            code = holding.get('code', '')
+            name = holding.get('name', '')
+            if not code:
+                continue
+
+            symbol = code_to_symbol.get(code)
+            if not symbol:
+                continue
 
             prices = self.fetch_sina_kline(symbol)
             if prices and len(prices) >= 30:
                 key = name if name else code
                 price_series[key] = prices
+
+                rt = realtime_data.get(symbol, {})
+                if rt:
+                    current = rt.get('current')
+                    prev_close = rt.get('prev_close')
+                    change = None
+                    change_pct = None
+                    if current and prev_close and prev_close > 0:
+                        change = round(current - prev_close, 4)
+                        change_pct = round(change / prev_close * 100, 2)
+                    realtime_data[key] = {
+                        "current": current,
+                        "prev_close": prev_close,
+                        "open": rt.get('open'),
+                        "high": rt.get('high'),
+                        "low": rt.get('low'),
+                        "change": change,
+                        "change_pct": change_pct,
+                    }
+
             time.sleep(0.3)
 
-        return price_series
+        return price_series, realtime_data
 
 
 if __name__ == "__main__":

@@ -37,6 +37,9 @@ export interface AnalysisResult {
   screen_score: number;
   position_multiplier: number;
   prices: number[];
+  current_price: number;
+  change_pct: number | null;
+  profit_pct: number | null;
 }
 
 export type MarketState = 
