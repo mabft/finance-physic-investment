@@ -309,19 +309,36 @@ async def interpret_all():
         fetcher = DataFetcher()
         holdings = load_holdings()
         
-        results = []
+        symbols = []
+        code_to_symbol = {}
         for holding in holdings:
             code = holding.get("code", "")
-            name = holding.get("name", "")
-            
             if not code:
                 continue
-            
             if code.startswith('6') or code.startswith('5'):
                 symbol = f"sh{code}"
             elif code.startswith('0') or code.startswith('3'):
                 symbol = f"sz{code}"
             else:
+                continue
+            symbols.append(symbol)
+            code_to_symbol[code] = symbol
+        
+        realtime_data = {}
+        if symbols:
+            realtime_data = fetcher.fetch_sina_realtime(symbols)
+        
+        results = []
+        for holding in holdings:
+            code = holding.get("code", "")
+            name = holding.get("name", "")
+            cost_price = holding.get("cost_price", 0)
+            
+            if not code:
+                continue
+            
+            symbol = code_to_symbol.get(code)
+            if not symbol:
                 continue
             
             prices = fetcher.fetch_sina_kline(symbol)
@@ -337,6 +354,55 @@ async def interpret_all():
             interpretations = interpret_metrics(metrics)
             state_info = interpret_market_state(state["state_name"])
             
+            rt = realtime_data.get(symbol, {})
+            current_price = rt.get("current", 0)
+            prev_close = rt.get("prev_close", 0)
+            open_price = rt.get("open", 0)
+            high = rt.get("high", 0)
+            low = rt.get("low", 0)
+            
+            change_pct = 0
+            change_amount = 0
+            if prev_close > 0 and current_price > 0:
+                change_amount = current_price - prev_close
+                change_pct = (change_amount / prev_close) * 100
+            
+            profit_pct = 0
+            profit_amount = 0
+            if cost_price > 0 and current_price > 0:
+                profit_amount = current_price - cost_price
+                profit_pct = (profit_amount / cost_price) * 100
+            
+            daily_analysis = analyze_realtime_data(rt)
+            
+            impact_analysis = []
+            if change_pct > 2:
+                impact_analysis.append(f"📈 大涨{change_pct:.2f}%，持仓市值显著增加")
+            elif change_pct > 0.5:
+                impact_analysis.append(f"📊 上涨{change_pct:.2f}%，持仓小幅增值")
+            elif change_pct < -2:
+                impact_analysis.append(f"📉 大跌{change_pct:.2f}%，持仓市值明显缩水")
+            elif change_pct < -0.5:
+                impact_analysis.append(f"📊 下跌{change_pct:.2f}%，持仓小幅贬值")
+            else:
+                impact_analysis.append(f"➡️ 平盘整理，持仓市值基本持平")
+            
+            if profit_pct > 10:
+                impact_analysis.append(f"✅ 持仓盈利{profit_pct:.2f}%，收益丰厚")
+            elif profit_pct > 0:
+                impact_analysis.append(f"✅ 持仓盈利{profit_pct:.2f}%，处于盈利状态")
+            elif profit_pct > -10:
+                impact_analysis.append(f" 持仓亏损{profit_pct:.2f}%，亏损可控")
+            else:
+                impact_analysis.append(f" 持仓亏损{profit_pct:.2f}%，亏损较大")
+            
+            if state == "CRISIS":
+                impact_analysis.append("⚠️ 危机状态，建议考虑减仓止损")
+            elif state == "BULL_TREND":
+                impact_analysis.append(" 牛市趋势，可继续持有或加仓")
+            elif state == "BEAR_TREND":
+                impact_analysis.append("📉 熊市趋势，建议谨慎持有或减仓")
+            
             results.append({
                 "code": code,
                 "name": name,
@@ -351,6 +417,22 @@ async def interpret_all():
                 "interpretations": interpretations,
                 "screen_score": score,
                 "position_multiplier": round(multiplier, 4),
+                "daily_data": {
+                    "current_price": round(current_price, 4) if current_price else 0,
+                    "prev_close": round(prev_close, 4) if prev_close else 0,
+                    "open_price": round(open_price, 4) if open_price else 0,
+                    "high": round(high, 4) if high else 0,
+                    "low": round(low, 4) if low else 0,
+                    "change_amount": round(change_amount, 4),
+                    "change_pct": round(change_pct, 2),
+                    "daily_analysis": daily_analysis,
+                },
+                "holding_impact": {
+                    "cost_price": round(cost_price, 4) if cost_price else 0,
+                    "profit_amount": round(profit_amount, 4),
+                    "profit_pct": round(profit_pct, 2),
+                    "impact_analysis": impact_analysis,
+                },
             })
             
             import time

@@ -1,5 +1,36 @@
 import { useEffect, useState } from 'react';
-import { BookOpen, TrendingUp, TrendingDown, AlertTriangle, Info, CheckCircle, XCircle, BarChart3, Thermometer, Zap, Target, RefreshCw } from 'lucide-react';
+import { BookOpen, TrendingUp, TrendingDown, AlertTriangle, Info, CheckCircle, XCircle, BarChart3, Thermometer, Zap, Target, RefreshCw, DollarSign, ArrowUpRight, ArrowDownRight, Minus, Wallet } from 'lucide-react';
+
+interface DailyData {
+  current_price: number;
+  prev_close: number;
+  open_price: number;
+  high: number;
+  low: number;
+  change_amount: number;
+  change_pct: number;
+  daily_analysis: {
+    change: number;
+    change_status: string;
+    spread: number;
+    spread_status: string;
+    gap: number;
+    gap_status: string;
+    current_price: number;
+    prev_close: number;
+    open: number;
+    high: number;
+    low: number;
+    volume: number;
+  };
+}
+
+interface HoldingImpact {
+  cost_price: number;
+  profit_amount: number;
+  profit_pct: number;
+  impact_analysis: string[];
+}
 
 interface InterpretationResult {
   code: string;
@@ -20,6 +51,8 @@ interface InterpretationResult {
   interpretations: string[];
   screen_score: number;
   position_multiplier: number;
+  daily_data: DailyData;
+  holding_impact: HoldingImpact;
 }
 
 export function Interpretation() {
@@ -121,9 +154,18 @@ export function Interpretation() {
                         <p className="font-medium text-gray-900 dark:text-white">{result.name}</p>
                         <p className="text-xs text-gray-500">{result.code}</p>
                       </div>
-                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStateColor(result.state)}`}>
-                        {result.state}
-                      </span>
+                      <div className="text-right">
+                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStateColor(result.state)}`}>
+                          {result.state}
+                        </span>
+                        {result.daily_data?.change_pct !== undefined && (
+                          <p className={`text-xs mt-1 font-medium ${
+                            result.daily_data.change_pct > 0 ? 'text-red-600' : result.daily_data.change_pct < 0 ? 'text-green-600' : 'text-gray-500'
+                          }`}>
+                            {result.daily_data.change_pct > 0 ? '+' : ''}{result.daily_data.change_pct.toFixed(2)}%
+                          </p>
+                        )}
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -195,6 +237,180 @@ export function Interpretation() {
                       </p>
                     </div>
                   </div>
+                </div>
+
+                <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                    <DollarSign className="w-5 h-5 text-green-600" />
+                    当日行情数据
+                  </h3>
+                  {selectedResult.daily_data && (
+                    <>
+                      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+                        <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3">
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">现价</p>
+                          <p className="text-lg font-bold text-gray-900 dark:text-white">
+                            ¥{selectedResult.daily_data.current_price.toFixed(2)}
+                          </p>
+                        </div>
+                        <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3">
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">昨收</p>
+                          <p className="text-lg font-bold text-gray-900 dark:text-white">
+                            ¥{selectedResult.daily_data.prev_close.toFixed(2)}
+                          </p>
+                        </div>
+                        <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3">
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">开盘</p>
+                          <p className="text-lg font-bold text-gray-900 dark:text-white">
+                            ¥{selectedResult.daily_data.open_price.toFixed(2)}
+                          </p>
+                        </div>
+                        <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3">
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">最高</p>
+                          <p className="text-lg font-bold text-red-600">
+                            ¥{selectedResult.daily_data.high.toFixed(2)}
+                          </p>
+                        </div>
+                        <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3">
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">最低</p>
+                          <p className="text-lg font-bold text-green-600">
+                            ¥{selectedResult.daily_data.low.toFixed(2)}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                        <div className={`rounded-lg p-4 ${
+                          selectedResult.daily_data.change_pct > 0
+                            ? 'bg-red-50 dark:bg-red-900/20'
+                            : selectedResult.daily_data.change_pct < 0
+                            ? 'bg-green-50 dark:bg-green-900/20'
+                            : 'bg-gray-50 dark:bg-gray-700/50'
+                        }`}>
+                          <div className="flex items-center gap-2 mb-2">
+                            {selectedResult.daily_data.change_pct > 0 ? (
+                              <ArrowUpRight className="w-5 h-5 text-red-600" />
+                            ) : selectedResult.daily_data.change_pct < 0 ? (
+                              <ArrowDownRight className="w-5 h-5 text-green-600" />
+                            ) : (
+                              <Minus className="w-5 h-5 text-gray-500" />
+                            )}
+                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">涨跌幅</span>
+                          </div>
+                          <p className={`text-2xl font-bold ${
+                            selectedResult.daily_data.change_pct > 0 ? 'text-red-600' :
+                            selectedResult.daily_data.change_pct < 0 ? 'text-green-600' : 'text-gray-600'
+                          }`}>
+                            {selectedResult.daily_data.change_pct > 0 ? '+' : ''}{selectedResult.daily_data.change_pct.toFixed(2)}%
+                          </p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            涨跌额: {selectedResult.daily_data.change_amount > 0 ? '+' : ''}{selectedResult.daily_data.change_amount.toFixed(4)}
+                          </p>
+                        </div>
+
+                        <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
+                          <div className="flex items-center gap-2 mb-2">
+                            <BarChart3 className="w-5 h-5 text-blue-600" />
+                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">振幅</span>
+                          </div>
+                          <p className="text-2xl font-bold text-blue-600">
+                            {selectedResult.daily_data.daily_analysis?.spread?.toFixed(2) ?? 0}%
+                          </p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {selectedResult.daily_data.daily_analysis?.spread_status ?? ''}
+                          </p>
+                        </div>
+
+                        <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4">
+                          <div className="flex items-center gap-2 mb-2">
+                            <TrendingUp className="w-5 h-5 text-purple-600" />
+                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">开盘情况</span>
+                          </div>
+                          <p className="text-2xl font-bold text-purple-600">
+                            {selectedResult.daily_data.daily_analysis?.gap_status ?? ''}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            缺口: {selectedResult.daily_data.daily_analysis?.gap?.toFixed(2) ?? 0}%
+                          </p>
+                        </div>
+                      </div>
+
+                      {selectedResult.daily_data.daily_analysis?.change_status && (
+                        <div className="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-4">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Info className="w-5 h-5 text-yellow-600" />
+                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">行情解读</span>
+                          </div>
+                          <p className="text-gray-700 dark:text-gray-300">
+                            今日{selectedResult.daily_data.daily_analysis.change_status}，{selectedResult.daily_data.daily_analysis.spread_status}，{selectedResult.daily_data.daily_analysis.gap_status}
+                          </p>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+
+                <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                    <Wallet className="w-5 h-5 text-blue-600" />
+                    持仓影响分析
+                  </h3>
+                  {selectedResult.holding_impact && (
+                    <>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                        <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">成本价</p>
+                          <p className="text-xl font-bold text-gray-900 dark:text-white">
+                            ¥{selectedResult.holding_impact.cost_price.toFixed(2)}
+                          </p>
+                        </div>
+                        <div className={`rounded-lg p-4 ${
+                          selectedResult.holding_impact.profit_pct > 0
+                            ? 'bg-red-50 dark:bg-red-900/20'
+                            : selectedResult.holding_impact.profit_pct < 0
+                            ? 'bg-green-50 dark:bg-green-900/20'
+                            : 'bg-gray-50 dark:bg-gray-700/50'
+                        }`}>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">盈亏比例</p>
+                          <p className={`text-xl font-bold ${
+                            selectedResult.holding_impact.profit_pct > 0 ? 'text-red-600' :
+                            selectedResult.holding_impact.profit_pct < 0 ? 'text-green-600' : 'text-gray-600'
+                          }`}>
+                            {selectedResult.holding_impact.profit_pct > 0 ? '+' : ''}{selectedResult.holding_impact.profit_pct.toFixed(2)}%
+                          </p>
+                        </div>
+                        <div className={`rounded-lg p-4 ${
+                          selectedResult.holding_impact.profit_amount > 0
+                            ? 'bg-red-50 dark:bg-red-900/20'
+                            : selectedResult.holding_impact.profit_amount < 0
+                            ? 'bg-green-50 dark:bg-green-900/20'
+                            : 'bg-gray-50 dark:bg-gray-700/50'
+                        }`}>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">盈亏金额</p>
+                          <p className={`text-xl font-bold ${
+                            selectedResult.holding_impact.profit_amount > 0 ? 'text-red-600' :
+                            selectedResult.holding_impact.profit_amount < 0 ? 'text-green-600' : 'text-gray-600'
+                          }`}>
+                            {selectedResult.holding_impact.profit_amount > 0 ? '+' : ''}¥{selectedResult.holding_impact.profit_amount.toFixed(4)}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        {selectedResult.holding_impact.impact_analysis.map((impact, index) => (
+                          <div
+                            key={index}
+                            className="flex items-start gap-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg"
+                          >
+                            <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-800/30 flex items-center justify-center text-blue-600 text-sm font-medium">
+                              {index + 1}
+                            </span>
+                            <p className="text-gray-700 dark:text-gray-300">{impact}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
