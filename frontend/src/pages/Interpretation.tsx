@@ -30,6 +30,27 @@ interface HoldingImpact {
   profit_amount: number;
   profit_pct: number;
   impact_analysis: string[];
+  position_multiplier: number;
+}
+
+interface CombinedRecommendation {
+  type: string;
+  icon: string;
+  title: string;
+  content: string;
+  action: string;
+  priority: string;
+}
+
+interface CombinedAnalysis {
+  combined_signal: string;
+  combined_score: number;
+  long_term_signal: string;
+  long_term_strength: number;
+  short_term_signal: string;
+  short_term_strength: number;
+  adjusted_multiplier: number;
+  recommendations: CombinedRecommendation[];
 }
 
 interface InterpretationResult {
@@ -53,6 +74,7 @@ interface InterpretationResult {
   position_multiplier: number;
   daily_data: DailyData;
   holding_impact: HoldingImpact;
+  combined_analysis: CombinedAnalysis;
 }
 
 export function Interpretation() {
@@ -239,12 +261,98 @@ export function Interpretation() {
                   </div>
                 </div>
 
+                {selectedResult.combined_analysis && (
+                  <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                      <Target className="w-5 h-5 text-indigo-600" />
+                      综合研判
+                    </h3>
+
+                    <div className="grid grid-cols-3 gap-4 mb-6">
+                      <div className="bg-indigo-50 dark:bg-indigo-900/20 rounded-lg p-4">
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">综合信号</p>
+                        <p className={`text-xl font-bold ${
+                          selectedResult.combined_analysis.combined_signal === 'bullish' ? 'text-red-600' :
+                          selectedResult.combined_analysis.combined_signal === 'bearish' ? 'text-green-600' : 'text-gray-600'
+                        }`}>
+                          {selectedResult.combined_analysis.combined_signal === 'bullish' ? '看多' :
+                           selectedResult.combined_analysis.combined_signal === 'bearish' ? '看空' : '中性'}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          强度: {(selectedResult.combined_analysis.combined_score * 100).toFixed(0)}%
+                        </p>
+                      </div>
+
+                      <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">长期趋势</p>
+                        <p className={`text-xl font-bold ${
+                          selectedResult.combined_analysis.long_term_signal === 'bullish' ? 'text-red-600' :
+                          selectedResult.combined_analysis.long_term_signal === 'bearish' ? 'text-green-600' : 'text-gray-600'
+                        }`}>
+                          {selectedResult.combined_analysis.long_term_signal === 'bullish' ? '向好' :
+                           selectedResult.combined_analysis.long_term_signal === 'bearish' ? '走弱' : '不明'}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          强度: {(selectedResult.combined_analysis.long_term_strength * 100).toFixed(0)}%
+                        </p>
+                      </div>
+
+                      <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4">
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">短期动量</p>
+                        <p className={`text-xl font-bold ${
+                          selectedResult.combined_analysis.short_term_signal === 'bullish' ? 'text-red-600' :
+                          selectedResult.combined_analysis.short_term_signal === 'bearish' ? 'text-green-600' : 'text-gray-600'
+                        }`}>
+                          {selectedResult.combined_analysis.short_term_signal === 'bullish' ? '强劲' :
+                           selectedResult.combined_analysis.short_term_signal === 'bearish' ? '疲弱' : '平稳'}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          强度: {(selectedResult.combined_analysis.short_term_strength * 100).toFixed(0)}%
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      {selectedResult.combined_analysis.recommendations.map((rec, index) => (
+                        <div
+                          key={index}
+                          className={`flex items-start gap-3 p-3 rounded-lg border ${
+                            rec.priority === 'high'
+                              ? 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800'
+                              : rec.priority === 'medium'
+                              ? 'bg-yellow-50 dark:bg-yellow-900/10 border-yellow-200 dark:border-yellow-800'
+                              : 'bg-gray-50 dark:bg-gray-700/30 border-gray-200 dark:border-gray-700'
+                          }`}
+                        >
+                          <span className="text-xl flex-shrink-0">{rec.icon}</span>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="font-medium text-gray-900 dark:text-white text-sm">{rec.title}</span>
+                              <span className={`text-xs px-1.5 py-0.5 rounded ${
+                                rec.priority === 'high' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
+                                rec.priority === 'medium' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
+                                'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
+                              }`}>
+                                {rec.priority === 'high' ? '重要' : rec.priority === 'medium' ? '关注' : '参考'}
+                              </span>
+                            </div>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">{rec.content}</p>
+                            <p className="text-sm font-medium text-indigo-600 dark:text-indigo-400 mt-1">
+                              → {rec.action}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
                     <DollarSign className="w-5 h-5 text-green-600" />
                     当日行情数据
                   </h3>
-                  {selectedResult.daily_data && (
+                  {selectedResult.daily_data && selectedResult.daily_data.current_price > 0 && (
                     <>
                       <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
                         <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3">

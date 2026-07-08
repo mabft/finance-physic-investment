@@ -218,6 +218,246 @@ def interpret_market_state(state):
     })
 
 
+def combined_analysis(metrics, daily_data, holding_impact, state):
+    """
+    综合物理金融指标与当日行情数据的统一分析
+    
+    Args:
+        metrics: 四维物理金融指标
+        daily_data: 当日行情数据
+        holding_impact: 持仓影响数据
+        state: 市场状态
+    
+    Returns:
+        dict with combined signals and recommendations
+    """
+    T = metrics.get("temperature", 0)
+    H = metrics.get("entropy", 0)
+    M = metrics.get("momentum", 0)
+    Hurst = metrics.get("hurst", 0)
+    
+    change_pct = daily_data.get("change_pct", 0)
+    profit_pct = holding_impact.get("profit_pct", 0)
+    position_multiplier = holding_impact.get("position_multiplier", 1)
+    
+    # 长期趋势信号 (物理金融指标)
+    long_term_signal = "neutral"
+    long_term_strength = 0
+    
+    if state == "BULL_TREND":
+        long_term_signal = "bullish"
+        long_term_strength = 0.8
+    elif state == "BULL_MEANREV":
+        long_term_signal = "bullish"
+        long_term_strength = 0.6
+    elif state == "BEAR_TREND":
+        long_term_signal = "bearish"
+        long_term_strength = 0.8
+    elif state == "BEAR_MEANREV":
+        long_term_signal = "bearish"
+        long_term_strength = 0.6
+    elif state == "CRISIS":
+        long_term_signal = "bearish"
+        long_term_strength = 1.0
+    elif state == "SIDEWAYS":
+        long_term_signal = "neutral"
+        long_term_strength = 0.3
+    
+    # 短期动量信号 (当日涨跌)
+    short_term_signal = "neutral"
+    short_term_strength = 0
+    
+    if change_pct > 2:
+        short_term_signal = "bullish"
+        short_term_strength = 0.9
+    elif change_pct > 0.5:
+        short_term_signal = "bullish"
+        short_term_strength = 0.6
+    elif change_pct < -2:
+        short_term_signal = "bearish"
+        short_term_strength = 0.9
+    elif change_pct < -0.5:
+        short_term_signal = "bearish"
+        short_term_strength = 0.6
+    
+    # 综合信号
+    combined_signal = "neutral"
+    combined_score = 0
+    
+    if long_term_signal == short_term_signal:
+        # 信号一致，强度叠加
+        combined_signal = long_term_signal
+        combined_score = (long_term_strength + short_term_strength) / 2
+    else:
+        # 信号冲突，取长期为主，短期为参考
+        combined_signal = long_term_signal
+        combined_score = long_term_strength * 0.7 + short_term_strength * 0.3
+    
+    # 生成综合建议
+    recommendations = []
+    
+    # 1. 趋势判断
+    if combined_signal == "bullish" and combined_score > 0.7:
+        recommendations.append({
+            "type": "trend",
+            "icon": "📈",
+            "title": "强势看多",
+            "content": f"长期趋势向好 + 短期动能强劲，建议积极做多",
+            "action": "加仓或持有",
+            "priority": "high"
+        })
+    elif combined_signal == "bullish":
+        recommendations.append({
+            "type": "trend",
+            "icon": "📊",
+            "title": "温和看多",
+            "content": f"长期趋势向好，短期有支撑",
+            "action": "持有为主",
+            "priority": "medium"
+        })
+    elif combined_signal == "bearish" and combined_score > 0.7:
+        recommendations.append({
+            "type": "trend",
+            "icon": "📉",
+            "title": "强势看空",
+            "content": f"长期趋势走弱 + 短期下跌明显，建议防御",
+            "action": "减仓或清仓",
+            "priority": "high"
+        })
+    elif combined_signal == "bearish":
+        recommendations.append({
+            "type": "trend",
+            "icon": "⚠️",
+            "title": "温和看空",
+            "content": f"长期趋势偏弱，注意风险",
+            "action": "谨慎持有",
+            "priority": "medium"
+        })
+    else:
+        recommendations.append({
+            "type": "trend",
+            "icon": "↔️",
+            "title": "中性观望",
+            "content": f"趋势不明朗，等待方向确认",
+            "action": "观望为主",
+            "priority": "low"
+        })
+    
+    # 2. 波动率建议
+    if T > 0.15:
+        recommendations.append({
+            "type": "volatility",
+            "icon": "🔴",
+            "title": "极高波动",
+            "content": f"温度 {T:.4f}，市场极度不稳定",
+            "action": "降低仓位至 10% 以下",
+            "priority": "high"
+        })
+    elif T > 0.08:
+        recommendations.append({
+            "type": "volatility",
+            "icon": "🟠",
+            "title": "高波动",
+            "content": f"温度 {T:.4f}，风险加大",
+            "action": "控制仓位在 40% 以内",
+            "priority": "medium"
+        })
+    elif T < 0.03:
+        recommendations.append({
+            "type": "volatility",
+            "icon": "🟢",
+            "title": "低波动",
+            "content": f"温度 {T:.4f}，市场稳定",
+            "action": "可适度放大仓位",
+            "priority": "low"
+        })
+    
+    # 3. 持仓建议
+    if profit_pct > 20:
+        recommendations.append({
+            "type": "position",
+            "icon": "✅",
+            "title": "盈利丰厚",
+            "content": f"持仓盈利 {profit_pct:.2f}%",
+            "action": "可部分止盈锁定利润",
+            "priority": "medium"
+        })
+    elif profit_pct < -20:
+        recommendations.append({
+            "type": "position",
+            "icon": "🔴",
+            "title": "深度套牢",
+            "content": f"持仓亏损 {profit_pct:.2f}%",
+            "action": "评估是否止损或补仓摊薄",
+            "priority": "high"
+        })
+    elif profit_pct < -10:
+        recommendations.append({
+            "type": "position",
+            "icon": "️",
+            "title": "明显亏损",
+            "content": f"持仓亏损 {profit_pct:.2f}%",
+            "action": "设置止损位，控制风险",
+            "priority": "medium"
+        })
+    
+    # 4. 操作时机建议 (结合短期涨跌)
+    if combined_signal == "bullish" and change_pct < -1:
+        recommendations.append({
+            "type": "timing",
+            "icon": "🎯",
+            "title": "回调买入机会",
+            "content": f"长期看多但今日回调 {change_pct:.2f}%",
+            "action": "可逢低分批建仓",
+            "priority": "high"
+        })
+    elif combined_signal == "bullish" and change_pct > 3:
+        recommendations.append({
+            "type": "timing",
+            "icon": "⚠️",
+            "title": "追高风险",
+            "content": f"长期看多但今日已涨 {change_pct:.2f}%",
+            "action": "等待回调再介入",
+            "priority": "medium"
+        })
+    elif combined_signal == "bearish" and change_pct > 1:
+        recommendations.append({
+            "type": "timing",
+            "icon": "🎯",
+            "title": "反弹减仓机会",
+            "content": f"长期看空但今日反弹 {change_pct:.2f}%",
+            "action": "可逢高减仓",
+            "priority": "high"
+        })
+    
+    # 5. 仓位系数调整
+    adjusted_multiplier = position_multiplier
+    if combined_signal == "bullish" and combined_score > 0.7:
+        adjusted_multiplier = min(position_multiplier * 1.2, 1.0)
+    elif combined_signal == "bearish" and combined_score > 0.7:
+        adjusted_multiplier = position_multiplier * 0.5
+    
+    recommendations.append({
+        "type": "position_size",
+        "icon": "📊",
+        "title": "建议仓位",
+        "content": f"基础仓位系数 {position_multiplier:.2f}x",
+        "action": f"综合调整后 {adjusted_multiplier:.2f}x",
+        "priority": "medium"
+    })
+    
+    return {
+        "combined_signal": combined_signal,
+        "combined_score": round(combined_score, 2),
+        "long_term_signal": long_term_signal,
+        "long_term_strength": round(long_term_strength, 2),
+        "short_term_signal": short_term_signal,
+        "short_term_strength": round(short_term_strength, 2),
+        "adjusted_multiplier": round(adjusted_multiplier, 2),
+        "recommendations": recommendations,
+    }
+
+
 @router.get("/instrument/{code}")
 async def interpret_instrument(code: str):
     from data_fetcher import DataFetcher
@@ -401,7 +641,28 @@ async def interpret_all():
             elif state == "BULL_TREND":
                 impact_analysis.append(" 牛市趋势，可继续持有或加仓")
             elif state == "BEAR_TREND":
-                impact_analysis.append("📉 熊市趋势，建议谨慎持有或减仓")
+                impact_analysis.append(" 熊市趋势，建议谨慎持有或减仓")
+            
+            daily_data_obj = {
+                "current_price": round(current_price, 4) if current_price else 0,
+                "prev_close": round(prev_close, 4) if prev_close else 0,
+                "open_price": round(open_price, 4) if open_price else 0,
+                "high": round(high, 4) if high else 0,
+                "low": round(low, 4) if low else 0,
+                "change_amount": round(change_amount, 4),
+                "change_pct": round(change_pct, 2),
+                "daily_analysis": daily_analysis,
+            }
+            
+            holding_impact_obj = {
+                "cost_price": round(cost_price, 4) if cost_price else 0,
+                "profit_amount": round(profit_amount, 4),
+                "profit_pct": round(profit_pct, 2),
+                "impact_analysis": impact_analysis,
+                "position_multiplier": round(multiplier, 4),
+            }
+            
+            combined = combined_analysis(metrics, daily_data_obj, holding_impact_obj, state["state_name"])
             
             results.append({
                 "code": code,
@@ -417,22 +678,9 @@ async def interpret_all():
                 "interpretations": interpretations,
                 "screen_score": score,
                 "position_multiplier": round(multiplier, 4),
-                "daily_data": {
-                    "current_price": round(current_price, 4) if current_price else 0,
-                    "prev_close": round(prev_close, 4) if prev_close else 0,
-                    "open_price": round(open_price, 4) if open_price else 0,
-                    "high": round(high, 4) if high else 0,
-                    "low": round(low, 4) if low else 0,
-                    "change_amount": round(change_amount, 4),
-                    "change_pct": round(change_pct, 2),
-                    "daily_analysis": daily_analysis,
-                },
-                "holding_impact": {
-                    "cost_price": round(cost_price, 4) if cost_price else 0,
-                    "profit_amount": round(profit_amount, 4),
-                    "profit_pct": round(profit_pct, 2),
-                    "impact_analysis": impact_analysis,
-                },
+                "daily_data": daily_data_obj,
+                "holding_impact": holding_impact_obj,
+                "combined_analysis": combined,
             })
             
             import time
