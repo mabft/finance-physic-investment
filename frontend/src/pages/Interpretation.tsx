@@ -81,6 +81,7 @@ export function Interpretation() {
   const [results, setResults] = useState<InterpretationResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedResult, setSelectedResult] = useState<InterpretationResult | null>(null);
+  const [showIndicatorGuide, setShowIndicatorGuide] = useState(false);
 
   const fetchInterpretations = async () => {
     setIsLoading(true);
@@ -134,15 +135,204 @@ export function Interpretation() {
           </h2>
           <p className="text-gray-500 dark:text-gray-400">基于四维物理金融指标的深度数据分析与解读</p>
         </div>
-        <button
-          onClick={fetchInterpretations}
-          disabled={isLoading}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
-        >
-          <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-          刷新数据
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowIndicatorGuide(!showIndicatorGuide)}
+            className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+          >
+            <Info className="w-4 h-4" />
+            {showIndicatorGuide ? '隐藏指标说明' : '指标说明'}
+          </button>
+          <button
+            onClick={fetchInterpretations}
+            disabled={isLoading}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+          >
+            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+            刷新数据
+          </button>
+        </div>
       </div>
+
+      {showIndicatorGuide && (
+        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl border border-blue-200 dark:border-blue-800 p-6">
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+            <Info className="w-5 h-5 text-blue-600" />
+            四维物理金融指标说明
+          </h3>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+            这四个指标从不同维度刻画市场状态——情绪、复杂度、趋势动能、长记忆性，共同构建多维度市场评估体系。
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-blue-100 dark:border-gray-700">
+              <div className="flex items-center gap-2 mb-3">
+                <Thermometer className="w-5 h-5 text-blue-600" />
+                <h4 className="font-semibold text-gray-900 dark:text-white">市场温度 (Temperature)</h4>
+              </div>
+              <div className="space-y-2 text-sm">
+                <div>
+                  <span className="font-medium text-gray-700 dark:text-gray-300">定义：</span>
+                  <span className="text-gray-600 dark:text-gray-400">综合情绪指标，基于波动率²构建，反映市场恐慌/狂热程度</span>
+                </div>
+                <div>
+                  <span className="font-medium text-gray-700 dark:text-gray-300">计算：</span>
+                  <span className="text-gray-600 dark:text-gray-400">60日年化波动率的平方，值域 [0, )</span>
+                </div>
+                <div>
+                  <span className="font-medium text-gray-700 dark:text-gray-300">应用：</span>
+                  <ul className="list-disc list-inside text-gray-600 dark:text-gray-400 mt-1 space-y-1">
+                    <li>极端值预警：温度过高/过低预示反转风险</li>
+                    <li>仓位管理：温度高减仓，温度低加仓</li>
+                    <li>择时过滤器：避免在极端情绪下交易</li>
+                  </ul>
+                </div>
+                <div className="pt-2 border-t border-gray-100 dark:border-gray-700">
+                  <span className="font-medium text-gray-700 dark:text-gray-300">阈值参考：</span>
+                  <span className="text-gray-600 dark:text-gray-400"> &lt;0.03 低波动(稳定) | 0.03-0.08 正常 | 0.08-0.15 高波动 | &gt;0.15 极高波动(危险)</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-purple-100 dark:border-gray-700">
+              <div className="flex items-center gap-2 mb-3">
+                <Zap className="w-5 h-5 text-purple-600" />
+                <h4 className="font-semibold text-gray-900 dark:text-white">市场熵值 (Entropy)</h4>
+              </div>
+              <div className="space-y-2 text-sm">
+                <div>
+                  <span className="font-medium text-gray-700 dark:text-gray-300">定义：</span>
+                  <span className="text-gray-600 dark:text-gray-400">基于价格或收益率的 Shannon 信息，衡量市场无序程度</span>
+                </div>
+                <div>
+                  <span className="font-medium text-gray-700 dark:text-gray-300">计算：</span>
+                  <span className="text-gray-600 dark:text-gray-400">将收益率离散化后计算香农熵，值域 [0, log(N)]</span>
+                </div>
+                <div>
+                  <span className="font-medium text-gray-700 dark:text-gray-300">应用：</span>
+                  <ul className="list-disc list-inside text-gray-600 dark:text-gray-400 mt-1 space-y-1">
+                    <li>趋势/震荡识别：低熵→趋势明确，高熵→震荡无序</li>
+                    <li>策略切换：低熵运行趋势策略，高熵运行震荡策略</li>
+                    <li>风险度量：熵突增可能预示市场突变</li>
+                  </ul>
+                </div>
+                <div className="pt-2 border-t border-gray-100 dark:border-gray-700">
+                  <span className="font-medium text-gray-700 dark:text-gray-300">阈值参考：</span>
+                  <span className="text-gray-600 dark:text-gray-400"> &lt;2.5 低熵(趋势) | 2.5-3.0 中等 | &gt;3.0 高(震荡)</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-green-100 dark:border-gray-700">
+              <div className="flex items-center gap-2 mb-3">
+                <TrendingUp className="w-5 h-5 text-green-600" />
+                <h4 className="font-semibold text-gray-900 dark:text-white">动量指标 (Momentum)</h4>
+              </div>
+              <div className="space-y-2 text-sm">
+                <div>
+                  <span className="font-medium text-gray-700 dark:text-gray-300">定义：</span>
+                  <span className="text-gray-600 dark:text-gray-400">收益/风险比，衡量趋势动能强度与方向</span>
+                </div>
+                <div>
+                  <span className="font-medium text-gray-700 dark:text-gray-300">计算：</span>
+                  <span className="text-gray-600 dark:text-gray-400">20日收益率 / 波动率，类似 Sharpe 比率，值域 (-∞, +∞)</span>
+                </div>
+                <div>
+                  <span className="font-medium text-gray-700 dark:text-gray-300">应用：</span>
+                  <ul className="list-disc list-inside text-gray-600 dark:text-gray-400 mt-1 space-y-1">
+                    <li>趋势跟随：动量为正且增强→持有/加仓</li>
+                    <li>金叉死叉：动量穿越零轴发出买卖信号</li>
+                    <li>超买超卖：极端值预示反转</li>
+                  </ul>
+                </div>
+                <div className="pt-2 border-t border-gray-100 dark:border-gray-700">
+                  <span className="font-medium text-gray-700 dark:text-gray-300">阈值参考：</span>
+                  <span className="text-gray-600 dark:text-gray-400"> &lt;-0.2 强负(下跌) | -0.2~0 弱负 | 0~0.2 弱正 | &gt;0.2 强正(上涨)</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-orange-100 dark:border-gray-700">
+              <div className="flex items-center gap-2 mb-3">
+                <Target className="w-5 h-5 text-orange-600" />
+                <h4 className="font-semibold text-gray-900 dark:text-white">Hurst 指数</h4>
+              </div>
+              <div className="space-y-2 text-sm">
+                <div>
+                  <span className="font-medium text-gray-700 dark:text-gray-300">定义：</span>
+                  <span className="text-gray-600 dark:text-gray-400">重标极差分析(R/S)，衡量时间序列的长记忆性与持续性</span>
+                </div>
+                <div>
+                  <span className="font-medium text-gray-700 dark:text-gray-300">计算：</span>
+                  <span className="text-gray-600 dark:text-gray-400">基于 R/S 分析，值域 [0, 1]</span>
+                </div>
+                <div>
+                  <span className="font-medium text-gray-700 dark:text-gray-300">应用：</span>
+                  <ul className="list-disc list-inside text-gray-600 dark:text-gray-400 mt-1 space-y-1">
+                    <li>H&gt;0.5：趋势延续(动量策略)</li>
+                    <li>H&lt;0.5：均值回归(反转策略)</li>
+                    <li>H≈0.5：随机游走(观望)</li>
+                    <li>资产配置：判断是否适合长期持有</li>
+                  </ul>
+                </div>
+                <div className="pt-2 border-t border-gray-100 dark:border-gray-700">
+                  <span className="font-medium text-gray-700 dark:text-gray-300">阈值参考：</span>
+                  <span className="text-gray-600 dark:text-gray-400"> &lt;0.4 强均值回归 | 0.4-0.5 弱回归 | 0.5-0.6 弱趋势 | &gt;0.6 强趋势</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-6 bg-white dark:bg-gray-800 rounded-lg p-4 border border-indigo-100 dark:border-gray-700">
+            <h4 className="font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+              <BarChart3 className="w-5 h-5 text-indigo-600" />
+              综合应用框架
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+              <div>
+                <p className="font-medium text-gray-700 dark:text-gray-300 mb-2">多维度市场状态评估</p>
+                <ul className="space-y-1 text-gray-600 dark:text-gray-400">
+                  <li>• 温度 → 情绪极端程度</li>
+                  <li>• 熵值 → 噪音水平</li>
+                  <li>• Hurst → 持续性</li>
+                  <li>• 动量 → 方向确认</li>
+                </ul>
+              </div>
+              <div>
+                <p className="font-medium text-gray-700 dark:text-gray-300 mb-2">策略信号示例</p>
+                <ul className="space-y-1 text-gray-600 dark:text-gray-400">
+                  <li>• Hurst&gt;0.6 + 动量向上 + 温度未过热 → <span className="text-red-600 font-medium">做多</span></li>
+                  <li>• Hurst&lt;0.4 + 动量向下 + 温度过冷 → <span className="text-green-600 font-medium">可能反弹</span></li>
+                  <li>• 熵突增 → 市场突变预警，设置止损</li>
+                </ul>
+              </div>
+              <div>
+                <p className="font-medium text-gray-700 dark:text-gray-300 mb-2">动态仓位控制</p>
+                <ul className="space-y-1 text-gray-600 dark:text-gray-400">
+                  <li>• 熵值高、温度极端 → 降低风险暴露</li>
+                  <li>• 综合信号强 → 放大仓位系数</li>
+                  <li>• 综合信号弱 → 缩减仓位系数</li>
+                </ul>
+              </div>
+              <div>
+                <p className="font-medium text-gray-700 dark:text-gray-300 mb-2">策略择时与切换</p>
+                <ul className="space-y-1 text-gray-600 dark:text-gray-400">
+                  <li>• Hurst + 熵值 → 判断趋势/震荡</li>
+                  <li>• 动量 → 发出具体进场信号</li>
+                  <li>• 温度 → 确认极端情绪避免假突破</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
+            <p className="text-xs text-yellow-800 dark:text-yellow-400 flex items-start gap-2">
+              <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+              <span><strong>注意事项：</strong>指标存在滞后性，需结合多周期验证；避免过拟合，参数需稳健性检验；极端行情下指标可能失效，需配合基本面分析。</span>
+            </p>
+          </div>
+        </div>
+      )}
 
       {isLoading ? (
         <div className="flex items-center justify-center h-64">
