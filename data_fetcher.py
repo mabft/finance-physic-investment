@@ -280,6 +280,123 @@ class DataFetcher:
 
         return price_series, realtime_data
 
+    def fetch_stock_news(self, code, name, max_count=20):
+        """
+        获取个股相关新闻（东方财富）
+        返回新闻列表，每条包含标题、时间、来源、链接
+        """
+        # 东方财富个股新闻 API
+        # secid: 1.600036 (上海) 或 0.002049 (深圳)
+        if code.startswith('6') or code.startswith('5'):
+            secid = f"1.{code}"
+        elif code.startswith('0') or code.startswith('3'):
+            secid = f"0.{code}"
+        else:
+            return []
+
+        url = (f"https://search-api-web.eastmoney.com/search/jsonp?"
+               f"cb=jQuery&param=%7B%22uid%22%3A%22%22%2C%22keyword%22%3A%22{name}%22%2C"
+               f"%22type%22%3A%5B%22cmsArticleWebOld%22%5D%2C%22client%22%3A%22web%22%2C"
+               f"%22clientType%22%3A%22web%22%2C%22clientVersion%22%3A%22curr%22%2C"
+               f"%22param%22%3A%7B%22cmsArticleWebOld%22%3A%7B%22searchScope%22%3A%22default%22%2C"
+               f"%22sort%22%3A%22default%22%2C%22pageIndex%22%3A1%2C%22pageSize%22%3A{max_count}%2C"
+               f"%22preTag%22%3A%22%22%2C%22postTag%22%3A%22%22%7D%7D%7D")
+
+        headers = API_HEADERS["EastMoney"].copy()
+        try:
+            resp = self.session.get(url, headers=headers, timeout=10)
+            text = resp.text
+            # 解析 JSONP
+            match = re.match(r'jQuery\((.*)\)', text, re.DOTALL)
+            if not match:
+                return []
+            data = json.loads(match.group(1))
+
+            articles = []
+            result = data.get('result', {})
+            items = result.get('cmsArticleWebOld', [])
+            if isinstance(items, dict):
+                items = items.get('list', [])
+
+            for item in items:
+                title = item.get('title', '')
+                # 清理 HTML 标签
+                title = re.sub(r'<[^>]+>', '', title)
+                articles.append({
+                    "title": title,
+                    "date": item.get('date', ''),
+                    "media_name": item.get('mediaName', ''),
+                    "url": item.get('url', ''),
+                    "content": item.get('content', '')[:200] if item.get('content') else '',
+                })
+
+            return articles
+        except Exception as e:
+            print(f"Error fetching news for {name}({code}): {e}")
+            return []
+
+    def analyze_news_sentiment(self, news_list):
+        """
+        基于关键词的新闻情感分析
+        返回: 利好/利空/中性 分类 + 重要程度评分
+        """
+        positive_keywords = [
+            "利好", "上涨", "涨停", "突破", "创新高", "业绩增长", "盈利增长",
+            "分红", "回购", "增持", "买入", "推荐", "超预期", "景气",
+            "政策支持", "降准", "降息", "刺激", "利好消息", "重大合同",
+            "战略合作", "并购", "重组", "获批", "通过", "增长", "翻倍",
+            "牛市", "放量", "资金流入", "北向资金", "主力买入",
+        ]
+        negative_keywords = [
+            "利空", "下跌", "跌停", "暴跌", "破位", "业绩下滑", "亏损",
+            "减持", "抛售", "卖出", "评级下调", "不及预期", "风险",
+            "监管", "处罚", "调查", "退市", "爆雷", "违约", "债务",
+            "熊市", "缩量", "资金流出", "主力卖出", "清仓", "割肉",
+            "贸易战", "制裁", "关税", "加息", "通胀", "衰退",
+        ]
+        important_keywords = [
+            "重大", "重要", "首次", "突破", "创历史新高", "翻倍",
+            "政策", "央行", "证监会", "国务院", "美联储",
+            "并购", "重组", "退市", "爆雷", "违约",
+        ]
+
+        results = []
+        for news in news_list:
+            title = news.get('title', '')
+            content = news.get('content', '')
+            text = title + ' ' + content
+
+            pos_count = sum(1 for kw in positive_keywords if kw in text)
+            neg_count = sum(1 for kw in negative_keywords if kw in text)
+            imp_count = sum(1 for kw in important_keywords if kw in text)
+
+            if pos_count > neg_count:
+                sentiment = "positive"
+                sentiment_label = "利好"
+            elif neg_count > pos_count:
+                sentiment = "negative"
+                sentiment_label = "利空"
+            else:
+                sentiment = "neutral"
+                sentiment_label = "中性"
+
+            importance = "normal"
+            if imp_count >= 2:
+                importance = "high"
+            elif imp_count >= 1 and max(pos_count, neg_count) >= 1:
+                importance = "medium"
+
+            results.append({
+                **news,
+                "sentiment": sentiment,
+                "sentiment_label": sentiment_label,
+                "importance": importance,
+                "positive_score": pos_count,
+                "negative_score": neg_count,
+            })
+
+        return results
+
 
 if __name__ == "__main__":
     fetcher = DataFetcher()

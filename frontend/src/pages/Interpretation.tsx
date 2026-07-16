@@ -53,6 +53,40 @@ interface CombinedAnalysis {
   recommendations: CombinedRecommendation[];
 }
 
+interface NewsArticle {
+  title: string;
+  date: string;
+  media_name: string;
+  url: string;
+  content: string;
+  sentiment: string;
+  sentiment_label: string;
+  importance: string;
+  positive_score: number;
+  negative_score: number;
+}
+
+interface NewsSummary {
+  total: number;
+  positive: number;
+  negative: number;
+  neutral: number;
+  important: number;
+  overall_sentiment: string;
+  overall_label: string;
+  key_news: {
+    title: string;
+    sentiment_label: string;
+    importance: string;
+    date: string;
+  }[];
+}
+
+interface NewsData {
+  summary: NewsSummary;
+  articles: NewsArticle[];
+}
+
 interface InterpretationResult {
   code: string;
   name: string;
@@ -75,6 +109,7 @@ interface InterpretationResult {
   daily_data: DailyData;
   holding_impact: HoldingImpact;
   combined_analysis: CombinedAnalysis;
+  news: NewsData;
 }
 
 export function Interpretation() {
@@ -647,6 +682,108 @@ export function Interpretation() {
                     </>
                   )}
                 </div>
+
+                {selectedResult.news && selectedResult.news.summary && (
+                  <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                      <span className="text-xl"></span>
+                      消息面分析
+                      <span className={`ml-auto text-sm px-3 py-1 rounded-full font-medium ${
+                        selectedResult.news.summary.overall_sentiment === 'positive' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
+                        selectedResult.news.summary.overall_sentiment === 'negative' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                        'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-400'
+                      }`}>
+                        {selectedResult.news.summary.overall_label}
+                      </span>
+                    </h3>
+
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+                      <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 text-center">
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">总消息数</p>
+                        <p className="text-xl font-bold text-gray-900 dark:text-white">
+                          {selectedResult.news.summary.total}
+                        </p>
+                      </div>
+                      <div className="bg-red-50 dark:bg-red-900/20 rounded-lg p-3 text-center">
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">利好</p>
+                        <p className="text-xl font-bold text-red-600">
+                          {selectedResult.news.summary.positive}
+                        </p>
+                      </div>
+                      <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-3 text-center">
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">利空</p>
+                        <p className="text-xl font-bold text-green-600">
+                          {selectedResult.news.summary.negative}
+                        </p>
+                      </div>
+                      <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 text-center">
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">中性</p>
+                        <p className="text-xl font-bold text-gray-600">
+                          {selectedResult.news.summary.neutral}
+                        </p>
+                      </div>
+                      <div className="bg-orange-50 dark:bg-orange-900/20 rounded-lg p-3 text-center">
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">重要</p>
+                        <p className="text-xl font-bold text-orange-600">
+                          {selectedResult.news.summary.important}
+                        </p>
+                      </div>
+                    </div>
+
+                    {selectedResult.news.articles && selectedResult.news.articles.length > 0 && (
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">筛选消息（利好/利空/重要）：</p>
+                        {selectedResult.news.articles.map((article, index) => (
+                          <div
+                            key={index}
+                            className={`flex items-start gap-3 p-3 rounded-lg border ${
+                              article.importance === 'high'
+                                ? 'bg-orange-50 dark:bg-orange-900/10 border-orange-200 dark:border-orange-800'
+                                : article.sentiment === 'positive'
+                                ? 'bg-red-50 dark:bg-red-900/10 border-red-100 dark:border-red-900/30'
+                                : article.sentiment === 'negative'
+                                ? 'bg-green-50 dark:bg-green-900/10 border-green-100 dark:border-green-900/30'
+                                : 'bg-gray-50 dark:bg-gray-700/30 border-gray-200 dark:border-gray-700'
+                            }`}
+                          >
+                            <div className="flex-shrink-0 flex flex-col items-center gap-1">
+                              <span className={`text-xs px-2 py-0.5 rounded font-medium ${
+                                article.sentiment === 'positive' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
+                                article.sentiment === 'negative' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                                'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
+                              }`}>
+                                {article.sentiment_label}
+                              </span>
+                              {article.importance !== 'normal' && (
+                                <span className={`text-xs px-2 py-0.5 rounded font-medium ${
+                                  article.importance === 'high' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' :
+                                  'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                                }`}>
+                                  {article.importance === 'high' ? '重要' : '关注'}
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-gray-900 dark:text-white leading-snug">
+                                {article.title}
+                              </p>
+                              <div className="flex items-center gap-3 mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                <span>{article.date}</span>
+                                {article.media_name && <span>{article.media_name}</span>}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {(!selectedResult.news.articles || selectedResult.news.articles.length === 0) && (
+                      <div className="text-center py-6">
+                        <p className="text-gray-500 dark:text-gray-400">暂无相关消息</p>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">

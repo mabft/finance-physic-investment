@@ -664,6 +664,62 @@ async def interpret_all():
             
             combined = combined_analysis(metrics, daily_data_obj, holding_impact_obj, state["state_name"])
             
+            # 获取消息面数据
+            news_data = []
+            news_summary = {
+                "total": 0,
+                "positive": 0,
+                "negative": 0,
+                "neutral": 0,
+                "important": 0,
+                "overall_sentiment": "neutral",
+                "overall_label": "中性",
+                "key_news": [],
+            }
+            
+            try:
+                raw_news = fetcher.fetch_stock_news(code, name, max_count=15)
+                if raw_news:
+                    analyzed_news = fetcher.analyze_news_sentiment(raw_news)
+                    # 筛选：只显示利好、利空和重要消息
+                    filtered_news = [
+                        n for n in analyzed_news
+                        if n["sentiment"] != "neutral" or n["importance"] != "normal"
+                    ]
+                    # 按重要程度和时效排序
+                    filtered_news.sort(key=lambda x: (
+                        0 if x["importance"] == "high" else 1 if x["importance"] == "medium" else 2,
+                        0 if x["sentiment"] == "negative" else 1,
+                    ), reverse=False)
+                    
+                    news_data = filtered_news[:10]
+                    
+                    pos = sum(1 for n in analyzed_news if n["sentiment"] == "positive")
+                    neg = sum(1 for n in analyzed_news if n["sentiment"] == "negative")
+                    neu = sum(1 for n in analyzed_news if n["sentiment"] == "neutral")
+                    imp = sum(1 for n in analyzed_news if n["importance"] in ("high", "medium"))
+                    
+                    news_summary = {
+                        "total": len(analyzed_news),
+                        "positive": pos,
+                        "negative": neg,
+                        "neutral": neu,
+                        "important": imp,
+                        "overall_sentiment": "positive" if pos > neg else "negative" if neg > pos else "neutral",
+                        "overall_label": "偏利好" if pos > neg else "偏利空" if neg > pos else "中性",
+                        "key_news": [
+                            {
+                                "title": n["title"],
+                                "sentiment_label": n["sentiment_label"],
+                                "importance": n["importance"],
+                                "date": n["date"],
+                            }
+                            for n in filtered_news[:5]
+                        ],
+                    }
+            except Exception as e:
+                print(f"Error fetching news for {name}: {e}")
+            
             results.append({
                 "code": code,
                 "name": name,
@@ -681,6 +737,10 @@ async def interpret_all():
                 "daily_data": daily_data_obj,
                 "holding_impact": holding_impact_obj,
                 "combined_analysis": combined,
+                "news": {
+                    "summary": news_summary,
+                    "articles": news_data,
+                },
             })
             
             import time
