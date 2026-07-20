@@ -2,7 +2,7 @@ import json
 import re
 import time
 import requests
-from config import API_HEADERS, KLINE_DATA_LEN, INSTRUMENTS
+from config import API_HEADERS, KLINE_DATA_LEN, INSTRUMENTS, PORTFOLIO
 
 
 class DataFetcher:
@@ -79,6 +79,36 @@ class DataFetcher:
         except Exception as e:
             print(f"Error fetching fund NAV for {fund_code}: {e}")
         return None
+
+    def fetch_fund_nav_history(self, fund_code, datalen=KLINE_DATA_LEN):
+        """
+        获取场外基金历史净值（天天基金 API）
+        返回净值价格序列，用于计算物理金融指标
+        """
+        url = (f"https://api.fund.eastmoney.com/f10/lsjz?"
+               f"fundCode={fund_code}&pageIndex=1&pageSize={datalen}&startDate=&endDate=&callback=jQuery")
+        headers = API_HEADERS["EastMoney"].copy()
+        try:
+            resp = self.session.get(url, headers=headers, timeout=15)
+            # 解析 JSONP: jQuery({...})
+            match = re.match(r'jQuery\((.*)\)', resp.text, re.DOTALL)
+            if not match:
+                return []
+            data = json.loads(match.group(1))
+            prices = []
+            items = data.get("Data", {}).get("LSJZList", [])
+            for item in items:
+                nav = item.get("DWJZ", "")
+                if nav:
+                    try:
+                        prices.append(float(nav))
+                    except:
+                        pass
+            prices.reverse()
+            return prices
+        except Exception as e:
+            print(f"Error fetching fund NAV history for {fund_code}: {e}")
+            return []
 
     def fetch_cnbc_quotes(self, symbols):
         url = (f"https://quote.cnbc.com/quote-json-webservice/restQuote/quoteData/quoteData.asp?"
@@ -222,13 +252,39 @@ class DataFetcher:
         price_series = {}
         realtime_data = {}
 
-        symbols = []
-        code_to_symbol = {}
+        # 分离场内股票和场外基金
+        stock_holdings = []
+        fund_holdings = []
+        fund_codes = set()
+
         for holding in holdings:
             code = holding.get('code', '')
-            name = holding.get('name', '')
             if not code:
                 continue
+            # 场外基金代码：6位数字，以0/1/2开头但不是sh/sz股票代码
+            # 基金代码特征：config.py 中 INSTRUMENTS["场外"] 定义的代码
+            # 简单判断：6位且不在场内代码范围内
+            if len(code) == 6 and (code.startswith('0') or code.startswith('1') or code.startswith('2')):
+                # 检查是否在场内 INSTRUMENTS 中
+                is_stock = False
+                for inst_list in INSTRUMENTS.values():
+                    for inst in inst_list:
+                        if inst.get('code') == code:
+                            is_stock = True
+                            break
+                    if is_stock:
+                        break
+                if not is_stock:
+                    fund_holdings.append(holding)
+                    fund_codes.add(code)
+                    continue
+            stock_holdings.append(holding)
+
+        # 处理场内股票
+        symbols = []
+        code_to_symbol = {}
+        for holding in stock_holdings:
+            code = holding.get('code', '')
             if (code.startswith('6') or code.startswith('5')) and len(code) == 6:
                 symbol = f"sh{code}"
             elif (code.startswith('0') or code.startswith('3')) and len(code) == 6:
@@ -242,7 +298,7 @@ class DataFetcher:
             realtime_data = self.fetch_sina_realtime(symbols)
             time.sleep(0.5)
 
-        for holding in holdings:
+        for holding in stock_holdings:
             code = holding.get('code', '')
             name = holding.get('name', '')
             if not code:
@@ -277,6 +333,43 @@ class DataFetcher:
                     }
 
             time.sleep(0.3)
+
+        # 处理场外基金：获取历史净值 + 实时估值
+        for holding in fund_holdings:
+            code = holding.get('code', '')
+            name = holding.get('name', '')
+            if not code:
+                continue
+
+            # 获取历史净值序列
+            prices = self.fetch_fund_nav_history(code)
+            if prices and len(prices) >= 30:
+                key = name if name else code
+                price_series[key] = prices
+
+                # 获取实时估值
+                nav_data = self.fetch_fund_nav(code)
+                if nav_data:
+                    current = nav_data.get('gsz', 0)
+                    prev_close = nav_data.get('dwjz', 0)
+                    change = None
+                    change_pct = None
+                    if current and prev_close and prev_close > 0:
+                        change = round(current - prev_close, 4)
+                        change_pct = round(change / prev_close * 100, 2)
+                    realtime_data[key] = {
+                        "current": current,
+                        "prev_close": prev_close,
+                        "open": prev_close,
+                        "high": current,
+                        "low": current,
+                        "change": change,
+                        "change_pct": change_pct,
+                        "is_fund": True,
+                        "nav_time": nav_data.get('gsz_time', ''),
+                    }
+
+            time.sleep(0.5)
 
         return price_series, realtime_data
 
