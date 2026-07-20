@@ -87,7 +87,12 @@ class DataFetcher:
         """
         url = (f"https://api.fund.eastmoney.com/f10/lsjz?"
                f"fundCode={fund_code}&pageIndex=1&pageSize={datalen}&startDate=&endDate=&callback=jQuery")
-        headers = API_HEADERS["EastMoney"].copy()
+        headers = {
+            "Referer": "https://fundf10.eastmoney.com/",
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept": "*/*",
+            "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+        }
         try:
             resp = self.session.get(url, headers=headers, timeout=15)
             # 解析 JSONP: jQuery({...})
@@ -95,6 +100,9 @@ class DataFetcher:
             if not match:
                 return []
             data = json.loads(match.group(1))
+            # 检查是否被反爬拦截
+            if data.get("ErrCode") == -999 or not isinstance(data.get("Data"), dict):
+                return []
             prices = []
             items = data.get("Data", {}).get("LSJZList", [])
             for item in items:
@@ -257,27 +265,20 @@ class DataFetcher:
         fund_holdings = []
         fund_codes = set()
 
+        # 收集所有场外基金代码
+        fund_code_set = set()
+        for inst in INSTRUMENTS.get("场外", []):
+            fund_code_set.add(inst.get('code', ''))
+
         for holding in holdings:
             code = holding.get('code', '')
             if not code:
                 continue
-            # 场外基金代码：6位数字，以0/1/2开头但不是sh/sz股票代码
-            # 基金代码特征：config.py 中 INSTRUMENTS["场外"] 定义的代码
-            # 简单判断：6位且不在场内代码范围内
-            if len(code) == 6 and (code.startswith('0') or code.startswith('1') or code.startswith('2')):
-                # 检查是否在场内 INSTRUMENTS 中
-                is_stock = False
-                for inst_list in INSTRUMENTS.values():
-                    for inst in inst_list:
-                        if inst.get('code') == code:
-                            is_stock = True
-                            break
-                    if is_stock:
-                        break
-                if not is_stock:
-                    fund_holdings.append(holding)
-                    fund_codes.add(code)
-                    continue
+            # 如果代码在场外基金列表中，归类为场外基金
+            if code in fund_code_set:
+                fund_holdings.append(holding)
+                fund_codes.add(code)
+                continue
             stock_holdings.append(holding)
 
         # 处理场内股票
