@@ -218,6 +218,190 @@ def interpret_market_state(state):
     })
 
 
+def generate_trading_strategy(metrics, daily_data, holding_impact, state, prices):
+    """
+    生成具体交易策略，包含买卖价格、止损止盈、仓位建议
+    """
+    current_price = daily_data.get("current_price", 0)
+    cost_price = holding_impact.get("cost_price", 0)
+
+    T = metrics.get("temperature", 0)
+    H = metrics.get("entropy", 0)
+    M = metrics.get("momentum", 0)
+    Hurst = metrics.get("hurst", 0)
+
+    if not prices or len(prices) < 20:
+        return {"error": "价格数据不足"}
+
+    recent_20 = prices[-20:]
+    recent_60 = prices[-60:] if len(prices) >= 60 else prices
+
+    ma5 = sum(prices[-5:]) / 5
+    ma10 = sum(prices[-10:]) / 10
+    ma20 = sum(recent_20) / len(recent_20)
+    ma60 = sum(recent_60) / len(recent_60)
+
+    recent_low = min(recent_20)
+    recent_high = max(recent_20)
+    support_1 = recent_low
+    support_2 = round(recent_low * 0.97, 2)
+    resistance_1 = recent_high
+    resistance_2 = round(recent_high * 1.03, 2)
+
+    strategy_type = ""
+    buy_signals = []
+    sell_signals = []
+    stop_loss = 0
+    take_profit = 0
+    position_advice = ""
+    entry_prices = []
+    exit_prices = []
+
+    if state == "BULL_TREND":
+        strategy_type = "趋势跟随策略"
+        buy_signals = [
+            f"价格回调至 MA5 ({ma5:.2f}) 附近企稳",
+            "动量 M > 0 且持续增强",
+            "温度 T < 0.12（未过热）",
+        ]
+        sell_signals = [
+            f"价格跌破 MA20 ({ma20:.2f}) 且无法收回",
+            "动量 M 转负且持续走弱",
+            "温度 T > 0.15（过热预警）",
+        ]
+        stop_loss = round(ma20 * 0.97, 2)
+        take_profit = round(resistance_2, 2)
+        entry_prices = [round(ma5 * 0.99, 2), round(ma5 * 1.01, 2)]
+        exit_prices = [round(take_profit * 0.98, 2), round(take_profit, 2)]
+        position_advice = "回调至 MA5 附近分批建仓，仓位系数 0.6-0.8x"
+
+    elif state == "BEAR_TREND":
+        strategy_type = "防御减仓策略"
+        buy_signals = [
+            f"价格反弹至 MA5 ({ma5:.2f}) 遇阻回落（做空信号）",
+            "动量 M < -0.2 且持续走弱",
+        ]
+        sell_signals = [
+            "持仓者逢反弹至 MA5 附近减仓",
+            f"价格跌破前低 {recent_low:.2f} 加速下跌",
+        ]
+        stop_loss = round(resistance_2, 2)
+        take_profit = round(support_2, 2)
+        entry_prices = []
+        exit_prices = [round(ma5 * 0.99, 2), round(ma5 * 1.01, 2)]
+        position_advice = "反弹至 MA5 附近分批减仓，仓位降至 0.2x 以下"
+
+    elif state == "SIDEWAYS":
+        strategy_type = "区间震荡策略"
+        buy_signals = [
+            f"价格回落至支撑位 {support_1:.2f} 附近企稳",
+            "熵 H > 3.0（高熵震荡）",
+            "动量 M 接近 0（方向不明）",
+        ]
+        sell_signals = [
+            f"价格反弹至阻力位 {resistance_1:.2f} 附近遇阻",
+            "突破区间后跟随趋势",
+        ]
+        stop_loss = round(support_2, 2)
+        take_profit = round(resistance_1, 2)
+        entry_prices = [round(support_1 * 1.01, 2), round(support_1 * 1.03, 2)]
+        exit_prices = [round(resistance_1 * 0.97, 2), round(resistance_1 * 0.99, 2)]
+        position_advice = f"支撑位 {support_1:.2f} 附近买入，阻力位 {resistance_1:.2f} 附近卖出，仓位系数 0.3-0.5x"
+
+    elif state == "CRISIS":
+        strategy_type = "危机应对策略"
+        buy_signals = [
+            "等待市场企稳信号（连续 3 日不创新低）",
+            "温度 T 从极值回落至 0.15 以下",
+        ]
+        sell_signals = [
+            "立即减仓至最低仓位",
+            f"设置严格止损，跌破 {support_2:.2f} 清仓",
+        ]
+        stop_loss = round(support_2, 2)
+        take_profit = round(ma20, 2)
+        entry_prices = []
+        exit_prices = [round(current_price * 0.97, 2), round(current_price * 0.95, 2)]
+        position_advice = "立即减仓至 0.1x 以下，保留现金等待企稳"
+
+    elif state == "BULL_MEANREV":
+        strategy_type = "牛市均值回归策略"
+        buy_signals = [
+            f"价格回调至 MA20 ({ma20:.2f}) 附近",
+            "Hurst H < 0.5（均值回归特征）",
+            "动量 M 从负值回升",
+        ]
+        sell_signals = [
+            f"价格反弹至 MA60 ({ma60:.2f}) 附近",
+            "动量 M > 0.2（短期过热）",
+        ]
+        stop_loss = round(ma20 * 0.95, 2)
+        take_profit = round(ma60, 2)
+        entry_prices = [round(ma20 * 0.99, 2), round(ma20 * 1.02, 2)]
+        exit_prices = [round(ma60 * 0.97, 2), round(ma60 * 0.99, 2)]
+        position_advice = f"MA20 附近 {ma20:.2f} 买入，MA60 附近 {ma60:.2f} 卖出，仓位系数 0.4-0.6x"
+
+    elif state == "BEAR_MEANREV":
+        strategy_type = "熊市反弹策略"
+        buy_signals = [
+            "超跌反弹信号：价格偏离 MA60 超过 10%",
+            "仅适合短线操作",
+        ]
+        sell_signals = [
+            f"反弹至 MA20 ({ma20:.2f}) 附近立即卖出",
+            "持仓者逢高减仓",
+        ]
+        stop_loss = round(recent_low * 0.97, 2)
+        take_profit = round(ma20, 2)
+        entry_prices = [round(recent_low * 1.02, 2), round(recent_low * 1.05, 2)]
+        exit_prices = [round(ma20 * 0.97, 2), round(ma20 * 0.99, 2)]
+        position_advice = "仅短线参与，仓位不超过 0.2x，快进快出"
+
+    elif state == "TRANSITION":
+        strategy_type = "过渡期观望策略"
+        buy_signals = [
+            f"等待方向确认：突破 {resistance_1:.2f} 做多",
+            f"或跌破 {support_1:.2f} 做空",
+        ]
+        sell_signals = [
+            f"持仓者设置止损于 {support_2:.2f}",
+            "突破失败立即离场",
+        ]
+        stop_loss = round(support_2, 2)
+        take_profit = round(resistance_2, 2)
+        entry_prices = [round(resistance_1 * 1.01, 2)]
+        exit_prices = [round(support_1 * 0.97, 2)]
+        position_advice = "观望为主，等待突破确认后轻仓参与，仓位系数 0.2-0.3x"
+
+    return {
+        "strategy_type": strategy_type,
+        "current_price": round(current_price, 2),
+        "ma5": round(ma5, 2),
+        "ma10": round(ma10, 2),
+        "ma20": round(ma20, 2),
+        "ma60": round(ma60, 2),
+        "support_1": round(support_1, 2),
+        "support_2": support_2,
+        "resistance_1": round(resistance_1, 2),
+        "resistance_2": resistance_2,
+        "criteria": {
+            "买入条件": buy_signals,
+            "卖出条件": sell_signals,
+            "止损位": stop_loss,
+            "止盈位": take_profit,
+            "入场价格区间": entry_prices,
+            "出场价格区间": exit_prices,
+            "仓位建议": position_advice,
+        },
+        "indicators": {
+            "temperature": round(T, 4),
+            "entropy": round(H, 4),
+            "momentum": round(M, 4),
+            "hurst": round(Hurst, 4),
+        },
+    }
+
+
 def combined_analysis(metrics, daily_data, holding_impact, state):
     """
     综合物理金融指标与当日行情数据的统一分析
@@ -664,6 +848,11 @@ async def interpret_all():
             
             combined = combined_analysis(metrics, daily_data_obj, holding_impact_obj, state["state_name"])
             
+            # 生成交易策略
+            trading_strategy = generate_trading_strategy(
+                metrics, daily_data_obj, holding_impact_obj, state["state_name"], prices
+            )
+            
             # 获取消息面数据
             news_data = []
             news_summary = {
@@ -737,6 +926,7 @@ async def interpret_all():
                 "daily_data": daily_data_obj,
                 "holding_impact": holding_impact_obj,
                 "combined_analysis": combined,
+                "trading_strategy": trading_strategy,
                 "news": {
                     "summary": news_summary,
                     "articles": news_data,

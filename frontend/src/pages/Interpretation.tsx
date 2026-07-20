@@ -87,6 +87,36 @@ interface NewsData {
   articles: NewsArticle[];
 }
 
+interface TradingStrategyCriteria {
+  "买入条件": string[];
+  "卖出条件": string[];
+  "止损位": number;
+  "止盈位": number;
+  "入场价格区间": number[];
+  "出场价格区间": number[];
+  "仓位建议": string;
+}
+
+interface TradingStrategy {
+  strategy_type: string;
+  current_price: number;
+  ma5: number;
+  ma10: number;
+  ma20: number;
+  ma60: number;
+  support_1: number;
+  support_2: number;
+  resistance_1: number;
+  resistance_2: number;
+  criteria: TradingStrategyCriteria;
+  indicators: {
+    temperature: number;
+    entropy: number;
+    momentum: number;
+    hurst: number;
+  };
+}
+
 interface InterpretationResult {
   code: string;
   name: string;
@@ -109,6 +139,7 @@ interface InterpretationResult {
   daily_data: DailyData;
   holding_impact: HoldingImpact;
   combined_analysis: CombinedAnalysis;
+  trading_strategy: TradingStrategy;
   news: NewsData;
 }
 
@@ -568,6 +599,194 @@ export function Interpretation() {
                           </div>
                         </div>
                       ))}
+                    </div>
+                  </div>
+                )}
+
+                {selectedResult.trading_strategy && (
+                  <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                      <Target className="w-5 h-5 text-red-600" />
+                      交易策略指引
+                      <span className="ml-auto text-sm px-3 py-1 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 font-medium">
+                        {selectedResult.trading_strategy.strategy_type}
+                      </span>
+                    </h3>
+
+                    {/* 关键价格位 */}
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+                      <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 text-center">
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">MA5</p>
+                        <p className="text-lg font-bold text-blue-600">
+                          ¥{selectedResult.trading_strategy.ma5.toFixed(2)}
+                        </p>
+                      </div>
+                      <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 text-center">
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">MA20</p>
+                        <p className="text-lg font-bold text-blue-600">
+                          ¥{selectedResult.trading_strategy.ma20.toFixed(2)}
+                        </p>
+                      </div>
+                      <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-3 text-center">
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">支撑位</p>
+                        <p className="text-lg font-bold text-green-600">
+                          ¥{selectedResult.trading_strategy.support_1.toFixed(2)}
+                        </p>
+                      </div>
+                      <div className="bg-red-50 dark:bg-red-900/20 rounded-lg p-3 text-center">
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">阻力位</p>
+                        <p className="text-lg font-bold text-red-600">
+                          ¥{selectedResult.trading_strategy.resistance_1.toFixed(2)}
+                        </p>
+                      </div>
+                      <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 text-center">
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">现价</p>
+                        <p className="text-lg font-bold text-gray-900 dark:text-white">
+                          ¥{selectedResult.trading_strategy.current_price.toFixed(2)}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* 止损止盈 */}
+                    <div className="grid grid-cols-2 gap-4 mb-6">
+                      <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4 border border-green-200 dark:border-green-800">
+                        <div className="flex items-center gap-2 mb-2">
+                          <TrendingUp className="w-5 h-5 text-green-600" />
+                          <span className="font-medium text-green-800 dark:text-green-400">止盈位</span>
+                        </div>
+                        <p className="text-2xl font-bold text-green-600">
+                          ¥{selectedResult.trading_strategy.criteria["止盈位"].toFixed(2)}
+                        </p>
+                      </div>
+                      <div className="bg-red-50 dark:bg-red-900/20 rounded-lg p-4 border border-red-200 dark:border-red-800">
+                        <div className="flex items-center gap-2 mb-2">
+                          <TrendingDown className="w-5 h-5 text-red-600" />
+                          <span className="font-medium text-red-800 dark:text-red-400">止损位</span>
+                        </div>
+                        <p className="text-2xl font-bold text-red-600">
+                          ¥{selectedResult.trading_strategy.criteria["止损位"].toFixed(2)}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* 买卖条件 */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                      <div className="bg-green-50 dark:bg-green-900/10 rounded-lg p-4 border border-green-200 dark:border-green-800">
+                        <h4 className="font-semibold text-green-800 dark:text-green-400 mb-3 flex items-center gap-2">
+                          <CheckCircle className="w-5 h-5" />
+                          买入条件
+                        </h4>
+                        <ul className="space-y-2">
+                          {selectedResult.trading_strategy.criteria["买入条件"].map((condition, index) => (
+                            <li key={index} className="text-sm text-gray-700 dark:text-gray-300 flex items-start gap-2">
+                              <span className="flex-shrink-0 w-5 h-5 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-green-600 text-xs font-medium">
+                                {index + 1}
+                              </span>
+                              <span>{condition}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      <div className="bg-red-50 dark:bg-red-900/10 rounded-lg p-4 border border-red-200 dark:border-red-800">
+                        <h4 className="font-semibold text-red-800 dark:text-red-400 mb-3 flex items-center gap-2">
+                          <XCircle className="w-5 h-5" />
+                          卖出条件
+                        </h4>
+                        <ul className="space-y-2">
+                          {selectedResult.trading_strategy.criteria["卖出条件"].map((condition, index) => (
+                            <li key={index} className="text-sm text-gray-700 dark:text-gray-300 flex items-start gap-2">
+                              <span className="flex-shrink-0 w-5 h-5 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center text-red-600 text-xs font-medium">
+                                {index + 1}
+                              </span>
+                              <span>{condition}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+
+                    {/* 入场出场价格区间 */}
+                    {selectedResult.trading_strategy.criteria["入场价格区间"].length > 0 && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                        <div className="bg-blue-50 dark:bg-blue-900/10 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
+                          <h4 className="font-semibold text-blue-800 dark:text-blue-400 mb-2">入场价格区间</h4>
+                          <div className="flex items-center gap-2">
+                            <span className="text-lg font-bold text-blue-600">
+                              ¥{selectedResult.trading_strategy.criteria["入场价格区间"][0].toFixed(2)}
+                            </span>
+                            {selectedResult.trading_strategy.criteria["入场价格区间"].length > 1 && (
+                              <>
+                                <span className="text-gray-500">-</span>
+                                <span className="text-lg font-bold text-blue-600">
+                                  ¥{selectedResult.trading_strategy.criteria["入场价格区间"][1].toFixed(2)}
+                                </span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="bg-purple-50 dark:bg-purple-900/10 rounded-lg p-4 border border-purple-200 dark:border-purple-800">
+                          <h4 className="font-semibold text-purple-800 dark:text-purple-400 mb-2">出场价格区间</h4>
+                          <div className="flex items-center gap-2">
+                            <span className="text-lg font-bold text-purple-600">
+                              ¥{selectedResult.trading_strategy.criteria["出场价格区间"][0].toFixed(2)}
+                            </span>
+                            {selectedResult.trading_strategy.criteria["出场价格区间"].length > 1 && (
+                              <>
+                                <span className="text-gray-500">-</span>
+                                <span className="text-lg font-bold text-purple-600">
+                                  ¥{selectedResult.trading_strategy.criteria["出场价格区间"][1].toFixed(2)}
+                                </span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 仓位建议 */}
+                    <div className="bg-yellow-50 dark:bg-yellow-900/10 rounded-lg p-4 border border-yellow-200 dark:border-yellow-800">
+                      <h4 className="font-semibold text-yellow-800 dark:text-yellow-400 mb-2 flex items-center gap-2">
+                        <BarChart3 className="w-5 h-5" />
+                        仓位建议
+                      </h4>
+                      <p className="text-gray-700 dark:text-gray-300">
+                        {selectedResult.trading_strategy.criteria["仓位建议"]}
+                      </p>
+                    </div>
+
+                    {/* 指标参考 */}
+                    <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">策略判定指标参考：</p>
+                      <div className="grid grid-cols-4 gap-2 text-xs">
+                        <div className="bg-gray-50 dark:bg-gray-700/30 rounded p-2 text-center">
+                          <span className="text-gray-500">温度:</span>
+                          <span className="ml-1 font-medium text-gray-900 dark:text-white">
+                            {selectedResult.trading_strategy.indicators.temperature.toFixed(4)}
+                          </span>
+                        </div>
+                        <div className="bg-gray-50 dark:bg-gray-700/30 rounded p-2 text-center">
+                          <span className="text-gray-500">熵:</span>
+                          <span className="ml-1 font-medium text-gray-900 dark:text-white">
+                            {selectedResult.trading_strategy.indicators.entropy.toFixed(4)}
+                          </span>
+                        </div>
+                        <div className="bg-gray-50 dark:bg-gray-700/30 rounded p-2 text-center">
+                          <span className="text-gray-500">动量:</span>
+                          <span className={`ml-1 font-medium ${
+                            selectedResult.trading_strategy.indicators.momentum >= 0 ? 'text-green-600' : 'text-red-600'
+                          }`}>
+                            {selectedResult.trading_strategy.indicators.momentum.toFixed(4)}
+                          </span>
+                        </div>
+                        <div className="bg-gray-50 dark:bg-gray-700/30 rounded p-2 text-center">
+                          <span className="text-gray-500">Hurst:</span>
+                          <span className="ml-1 font-medium text-gray-900 dark:text-white">
+                            {selectedResult.trading_strategy.indicators.hurst.toFixed(4)}
+                          </span>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 )}
