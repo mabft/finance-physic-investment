@@ -32,6 +32,7 @@ export interface Metrics {
 
 export interface AnalysisResult {
   name: string;
+  code: string;
   metrics: Metrics;
   state: MarketState;
   screen_score: number;
@@ -40,6 +41,17 @@ export interface AnalysisResult {
   current_price: number;
   change_pct: number | null;
   profit_pct: number | null;
+  profit_amount: number | null;
+  cost_price: number;
+  quantity: number;
+}
+
+export interface PortfolioSummary {
+  total_cost: number;
+  total_market_value: number;
+  total_profit: number;
+  total_profit_pct: number | null;
+  holding_count: number;
 }
 
 export type MarketState = 

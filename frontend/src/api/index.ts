@@ -1,4 +1,4 @@
-import type { Holding, Instrument, AnalysisResult, Report, ReportContent, RealtimeData, GlobalIndex, FundData } from '@/types';
+import type { Holding, Instrument, AnalysisResult, Report, ReportContent, RealtimeData, GlobalIndex, FundData, PortfolioSummary } from '@/types';
 
 const API_BASE = '/api';
 
@@ -76,7 +76,7 @@ export const dataApi = {
 };
 
 export const analysisApi = {
-  analyzeAll: async (): Promise<{ results: AnalysisResult[]; price_data: Record<string, number[]>; timestamp: string }> => {
+  analyzeAll: async (): Promise<{ results: AnalysisResult[]; summary: PortfolioSummary; price_data: Record<string, number[]>; timestamp: string }> => {
     const res = await fetch(`${API_BASE}/analysis/all`);
     return res.json();
   },

@@ -47,8 +47,13 @@ async def analyze_all():
         code_to_name = {h.get('code', ''): h.get('name', '') for h in holdings}
         name_to_code = {h.get('name', ''): h.get('code', '') for h in holdings}
         code_to_cost = {h.get('code', ''): h.get('cost_price', 0) for h in holdings}
+        code_to_qty = {h.get('code', ''): h.get('quantity', 0) for h in holdings}
 
         results = []
+        total_cost = 0
+        total_market_value = 0
+        total_profit = 0
+
         for name, data in raw_results.items():
             state_str = data.get("state", {}).get("state_name", "UNKNOWN")
 
@@ -77,12 +82,19 @@ async def analyze_all():
                 change_pct = round(change / prev_close * 100, 2)
 
             cost_price = code_to_cost.get(code, 0)
+            quantity = code_to_qty.get(code, 0)
             profit_pct = None
+            profit_amount = None
             if cost_price and cost_price > 0:
                 profit_pct = round((current_price - cost_price) / cost_price * 100, 2)
+                profit_amount = round((current_price - cost_price) * quantity, 2)
+                total_cost += cost_price * quantity
+                total_market_value += current_price * quantity
+                total_profit += profit_amount
 
             results.append({
                 "name": display_name,
+                "code": code,
                 "metrics": simple_metrics,
                 "state": state_str,
                 "screen_score": data.get("screen_score", 0),
@@ -91,10 +103,26 @@ async def analyze_all():
                 "current_price": round(current_price, 4) if current_price else 0,
                 "change_pct": change_pct,
                 "profit_pct": profit_pct,
+                "profit_amount": profit_amount,
+                "cost_price": cost_price,
+                "quantity": quantity,
             })
+
+        total_profit_pct = None
+        if total_cost > 0:
+            total_profit_pct = round(total_profit / total_cost * 100, 2)
+
+        summary = {
+            "total_cost": round(total_cost, 2),
+            "total_market_value": round(total_market_value, 2),
+            "total_profit": round(total_profit, 2),
+            "total_profit_pct": total_profit_pct,
+            "holding_count": len(results),
+        }
 
         return {
             "results": results,
+            "summary": summary,
             "price_data": price_data,
             "timestamp": datetime.now().isoformat()
         }

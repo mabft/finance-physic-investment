@@ -3,11 +3,11 @@ import { useAppStore } from '@/store';
 import { MetricCard } from '@/components/Cards/MetricCard';
 import { StateCard } from '@/components/Cards/StateCard';
 import { PriceChart } from '@/components/Charts/PriceChart';
-import { TrendingUp, TrendingDown, ShoppingCart, Clock, AlertTriangle, Info, ArrowUpRight, ArrowDownRight, Minus } from 'lucide-react';
+import { TrendingUp, TrendingDown, ShoppingCart, Clock, AlertTriangle, Info, ArrowUpRight, ArrowDownRight, Minus, Wallet } from 'lucide-react';
 import type { AnalysisResult } from '@/types';
 
 export function Dashboard() {
-  const { analysisResults, holdings, loadAnalysisResults, loadHoldings, isLoading } = useAppStore();
+  const { analysisResults, portfolioSummary, holdings, loadAnalysisResults, loadHoldings, isLoading } = useAppStore();
   const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
 
   useEffect(() => {
@@ -179,6 +179,44 @@ export function Dashboard() {
         </div>
       ) : (
         <>
+          {/* Portfolio Summary */}
+          {portfolioSummary && (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
+                <div className="flex items-center gap-2 mb-2">
+                  <Wallet className="w-5 h-5 text-blue-500" />
+                  <span className="text-sm text-gray-500">总成本</span>
+                </div>
+                <p className="text-xl font-bold text-gray-900 dark:text-white">¥{portfolioSummary.total_cost.toLocaleString('zh-CN', { minimumFractionDigits: 2 })}</p>
+              </div>
+              <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
+                <div className="flex items-center gap-2 mb-2">
+                  <Wallet className="w-5 h-5 text-green-500" />
+                  <span className="text-sm text-gray-500">总市值</span>
+                </div>
+                <p className="text-xl font-bold text-gray-900 dark:text-white">¥{portfolioSummary.total_market_value.toLocaleString('zh-CN', { minimumFractionDigits: 2 })}</p>
+              </div>
+              <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
+                <div className="flex items-center gap-2 mb-2">
+                  <Wallet className="w-5 h-5 text-purple-500" />
+                  <span className="text-sm text-gray-500">总盈亏</span>
+                </div>
+                <p className={`text-xl font-bold ${portfolioSummary.total_profit >= 0 ? 'text-red-600' : 'text-green-600'}`}>
+                  {portfolioSummary.total_profit >= 0 ? '+' : ''}¥{portfolioSummary.total_profit.toLocaleString('zh-CN', { minimumFractionDigits: 2 })}
+                </p>
+              </div>
+              <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
+                <div className="flex items-center gap-2 mb-2">
+                  <Wallet className="w-5 h-5 text-orange-500" />
+                  <span className="text-sm text-gray-500">盈亏比例</span>
+                </div>
+                <p className={`text-xl font-bold ${portfolioSummary.total_profit_pct !== null && portfolioSummary.total_profit_pct >= 0 ? 'text-red-600' : 'text-green-600'}`}>
+                  {portfolioSummary.total_profit_pct !== null ? (portfolioSummary.total_profit_pct >= 0 ? '+' : '') + portfolioSummary.total_profit_pct.toFixed(2) + '%' : '-'}
+                </p>
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2">
               <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
@@ -190,7 +228,8 @@ export function Dashboard() {
                         <th className="text-left py-3 px-4 text-sm font-semibold text-gray-600 dark:text-gray-400">标的</th>
                         <th className="text-center py-3 px-4 text-sm font-semibold text-gray-600 dark:text-gray-400">现价</th>
                         <th className="text-center py-3 px-4 text-sm font-semibold text-gray-600 dark:text-gray-400">涨跌</th>
-                        <th className="text-center py-3 px-4 text-sm font-semibold text-gray-600 dark:text-gray-400">盈亏</th>
+                        <th className="text-center py-3 px-4 text-sm font-semibold text-gray-600 dark:text-gray-400">盈亏%</th>
+                        <th className="text-center py-3 px-4 text-sm font-semibold text-gray-600 dark:text-gray-400">盈亏额</th>
                         <th className="text-center py-3 px-4 text-sm font-semibold text-gray-600 dark:text-gray-400">状态</th>
                         <th className="text-center py-3 px-4 text-sm font-semibold text-gray-600 dark:text-gray-400">温度</th>
                         <th className="text-center py-3 px-4 text-sm font-semibold text-gray-600 dark:text-gray-400">动量</th>
@@ -238,6 +277,17 @@ export function Dashboard() {
                                   result.profit_pct > 0 ? 'text-red-600' : result.profit_pct < 0 ? 'text-green-600' : 'text-gray-600'
                                 }`}>
                                   {result.profit_pct > 0 ? '+' : ''}{result.profit_pct.toFixed(2)}%
+                                </span>
+                              ) : (
+                                <span className="text-gray-400">-</span>
+                              )}
+                            </td>
+                            <td className="py-3 px-4 text-center">
+                              {result.profit_amount !== null ? (
+                                <span className={`font-medium ${
+                                  result.profit_amount > 0 ? 'text-red-600' : result.profit_amount < 0 ? 'text-green-600' : 'text-gray-600'
+                                }`}>
+                                  {result.profit_amount > 0 ? '+' : ''}¥{result.profit_amount.toLocaleString('zh-CN', { minimumFractionDigits: 2 })}
                                 </span>
                               ) : (
                                 <span className="text-gray-400">-</span>

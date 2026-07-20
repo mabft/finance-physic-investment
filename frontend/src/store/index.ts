@@ -1,11 +1,12 @@
 import { create } from 'zustand';
-import type { Holding, Instrument, AnalysisResult, Report, ReportContent, RealtimeData, GlobalIndex, FundData } from '@/types';
+import type { Holding, Instrument, AnalysisResult, Report, ReportContent, RealtimeData, GlobalIndex, FundData, PortfolioSummary } from '@/types';
 import { configApi, dataApi, analysisApi, reportsApi } from '@/api';
 
 interface AppState {
   holdings: Holding[];
   instruments: Record<string, Instrument[]>;
   analysisResults: AnalysisResult[];
+  portfolioSummary: PortfolioSummary | null;
   reports: Report[];
   currentReport: ReportContent | null;
   realtimeData: RealtimeData[];
@@ -36,6 +37,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   holdings: [],
   instruments: {},
   analysisResults: [],
+  portfolioSummary: null,
   reports: [],
   currentReport: null,
   realtimeData: [],
@@ -121,8 +123,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   loadAnalysisResults: async () => {
     set({ isLoading: true, error: null });
     try {
-      const { results } = await analysisApi.analyzeAll();
-      set({ analysisResults: results || [] });
+      const { results, summary } = await analysisApi.analyzeAll();
+      set({ analysisResults: results || [], portfolioSummary: summary || null });
     } catch (err) {
       set({ error: '加载分析结果失败' });
     } finally {

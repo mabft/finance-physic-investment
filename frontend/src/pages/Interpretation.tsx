@@ -143,22 +143,39 @@ interface InterpretationResult {
   news: NewsData;
 }
 
+interface PortfolioSummary {
+  total_cost: number;
+  total_market_value: number;
+  total_profit: number;
+  total_profit_pct: number | null;
+  holding_count: number;
+}
+
 export function Interpretation() {
   const [results, setResults] = useState<InterpretationResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedResult, setSelectedResult] = useState<InterpretationResult | null>(null);
   const [showIndicatorGuide, setShowIndicatorGuide] = useState(false);
+  const [portfolioSummary, setPortfolioSummary] = useState<PortfolioSummary | null>(null);
 
   const fetchInterpretations = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch('/api/interpretation/all');
-      const data = await response.json();
-      if (data.results) {
-        setResults(data.results);
-        if (data.results.length > 0) {
-          setSelectedResult(data.results[0]);
+      const [interpRes, analysisRes] = await Promise.all([
+        fetch('/api/interpretation/all'),
+        fetch('/api/analysis/all')
+      ]);
+      const interpData = await interpRes.json();
+      const analysisData = await analysisRes.json();
+
+      if (interpData.results) {
+        setResults(interpData.results);
+        if (interpData.results.length > 0) {
+          setSelectedResult(interpData.results[0]);
         }
+      }
+      if (analysisData.summary) {
+        setPortfolioSummary(analysisData.summary);
       }
     } catch (error) {
       console.error('获取解读数据失败:', error);
@@ -219,6 +236,44 @@ export function Interpretation() {
           </button>
         </div>
       </div>
+
+      {/* Portfolio Summary */}
+      {portfolioSummary && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
+            <div className="flex items-center gap-2 mb-2">
+              <Wallet className="w-5 h-5 text-blue-500" />
+              <span className="text-sm text-gray-500">总成本</span>
+            </div>
+            <p className="text-xl font-bold text-gray-900 dark:text-white">¥{portfolioSummary.total_cost.toLocaleString('zh-CN', { minimumFractionDigits: 2 })}</p>
+          </div>
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
+            <div className="flex items-center gap-2 mb-2">
+              <Wallet className="w-5 h-5 text-green-500" />
+              <span className="text-sm text-gray-500">总市值</span>
+            </div>
+            <p className="text-xl font-bold text-gray-900 dark:text-white">¥{portfolioSummary.total_market_value.toLocaleString('zh-CN', { minimumFractionDigits: 2 })}</p>
+          </div>
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
+            <div className="flex items-center gap-2 mb-2">
+              <Wallet className="w-5 h-5 text-purple-500" />
+              <span className="text-sm text-gray-500">总盈亏</span>
+            </div>
+            <p className={`text-xl font-bold ${portfolioSummary.total_profit >= 0 ? 'text-red-600' : 'text-green-600'}`}>
+              {portfolioSummary.total_profit >= 0 ? '+' : ''}¥{portfolioSummary.total_profit.toLocaleString('zh-CN', { minimumFractionDigits: 2 })}
+            </p>
+          </div>
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
+            <div className="flex items-center gap-2 mb-2">
+              <Wallet className="w-5 h-5 text-orange-500" />
+              <span className="text-sm text-gray-500">盈亏比例</span>
+            </div>
+            <p className={`text-xl font-bold ${portfolioSummary.total_profit_pct !== null && portfolioSummary.total_profit_pct >= 0 ? 'text-red-600' : 'text-green-600'}`}>
+              {portfolioSummary.total_profit_pct !== null ? (portfolioSummary.total_profit_pct >= 0 ? '+' : '') + portfolioSummary.total_profit_pct.toFixed(2) + '%' : '-'}
+            </p>
+          </div>
+        </div>
+      )}
 
       {showIndicatorGuide && (
         <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl border border-blue-200 dark:border-blue-800 p-6">
