@@ -85,35 +85,45 @@ class DataFetcher:
         获取场外基金历史净值（天天基金 API）
         返回净值价格序列，用于计算物理金融指标
         """
-        url = (f"https://api.fund.eastmoney.com/f10/lsjz?"
-               f"fundCode={fund_code}&pageIndex=1&pageSize={datalen}&startDate=&endDate=&callback=jQuery")
         headers = {
-            "Referer": "https://fundf10.eastmoney.com/",
+            "Referer": f"https://fundf10.eastmoney.com/jjjz_{fund_code}.html",
             "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
             "Accept": "*/*",
             "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
         }
+        all_prices = []
+        page_size = 50  # API 限制每页最多 50 条
+        page_index = 1
+
         try:
-            resp = self.session.get(url, headers=headers, timeout=15)
-            # 解析 JSONP: jQuery({...})
-            match = re.match(r'jQuery\((.*)\)', resp.text, re.DOTALL)
-            if not match:
-                return []
-            data = json.loads(match.group(1))
-            # 检查是否被反爬拦截
-            if data.get("ErrCode") == -999 or not isinstance(data.get("Data"), dict):
-                return []
-            prices = []
-            items = data.get("Data", {}).get("LSJZList", [])
-            for item in items:
-                nav = item.get("DWJZ", "")
-                if nav:
-                    try:
-                        prices.append(float(nav))
-                    except:
-                        pass
-            prices.reverse()
-            return prices
+            while len(all_prices) < datalen:
+                url = (f"https://api.fund.eastmoney.com/f10/lsjz?"
+                       f"fundCode={fund_code}&pageIndex={page_index}&pageSize={page_size}&startDate=&endDate=&callback=jQuery")
+                resp = self.session.get(url, headers=headers, timeout=15)
+                match = re.match(r'jQuery\((.*)\)', resp.text, re.DOTALL)
+                if not match:
+                    break
+                data = json.loads(match.group(1))
+                if not isinstance(data.get("Data"), dict):
+                    break
+                items = data.get("Data", {}).get("LSJZList", [])
+                if not items:
+                    break
+                for item in items:
+                    nav = item.get("DWJZ", "")
+                    if nav:
+                        try:
+                            all_prices.append(float(nav))
+                        except:
+                            pass
+                total_count = data.get("TotalCount", 0)
+                if len(all_prices) >= total_count or len(all_prices) >= datalen:
+                    break
+                page_index += 1
+                time.sleep(0.3)
+
+            all_prices.reverse()
+            return all_prices[:datalen]
         except Exception as e:
             print(f"Error fetching fund NAV history for {fund_code}: {e}")
             return []
