@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { BookOpen, TrendingUp, TrendingDown, AlertTriangle, Info, CheckCircle, XCircle, BarChart3, Thermometer, Zap, Target, RefreshCw, DollarSign, ArrowUpRight, ArrowDownRight, Minus, Wallet } from 'lucide-react';
+import { BookOpen, TrendingUp, TrendingDown, AlertTriangle, Info, CheckCircle, XCircle, BarChart3, Thermometer, Zap, Target, RefreshCw, DollarSign, ArrowUpRight, ArrowDownRight, Minus, Wallet, ShoppingCart } from 'lucide-react';
 
 interface DailyData {
   current_price: number;
@@ -761,44 +761,78 @@ export function Interpretation() {
                       </div>
                     </div>
 
-                    {/* 入场出场价格区间 */}
-                    {selectedResult.trading_strategy.criteria["入场价格区间"].length > 0 && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                        <div className="bg-blue-50 dark:bg-blue-900/10 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
-                          <h4 className="font-semibold text-blue-800 dark:text-blue-400 mb-2">入场价格区间</h4>
-                          <div className="flex items-center gap-2">
-                            <span className="text-lg font-bold text-blue-600">
-                              ¥{selectedResult.trading_strategy.criteria["入场价格区间"][0].toFixed(3)}
-                            </span>
-                            {selectedResult.trading_strategy.criteria["入场价格区间"].length > 1 && (
-                              <>
-                                <span className="text-gray-500">-</span>
-                                <span className="text-lg font-bold text-blue-600">
-                                  ¥{selectedResult.trading_strategy.criteria["入场价格区间"][1].toFixed(3)}
-                                </span>
-                              </>
-                            )}
+                    {/* 买卖价格区间 */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                      {/* 买入区间 */}
+                      <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl p-5 border-2 border-green-300 dark:border-green-700">
+                        <div className="flex items-center gap-2 mb-3">
+                          <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center">
+                            <ShoppingCart className="w-4 h-4 text-white" />
                           </div>
+                          <h4 className="font-bold text-green-800 dark:text-green-400 text-base">买入价格区间</h4>
                         </div>
-
-                        <div className="bg-purple-50 dark:bg-purple-900/10 rounded-lg p-4 border border-purple-200 dark:border-purple-800">
-                          <h4 className="font-semibold text-purple-800 dark:text-purple-400 mb-2">出场价格区间</h4>
-                          <div className="flex items-center gap-2">
-                            <span className="text-lg font-bold text-purple-600">
-                              ¥{selectedResult.trading_strategy.criteria["出场价格区间"][0].toFixed(3)}
-                            </span>
-                            {selectedResult.trading_strategy.criteria["出场价格区间"].length > 1 && (
-                              <>
-                                <span className="text-gray-500">-</span>
-                                <span className="text-lg font-bold text-purple-600">
-                                  ¥{selectedResult.trading_strategy.criteria["出场价格区间"][1].toFixed(3)}
-                                </span>
-                              </>
-                            )}
+                        {selectedResult.trading_strategy.criteria["入场价格区间"].length > 0 ? (
+                          <div>
+                            <div className="flex items-baseline gap-2 mb-2">
+                              <span className="text-3xl font-bold text-green-600">
+                                ¥{selectedResult.trading_strategy.criteria["入场价格区间"][0].toFixed(3)}
+                              </span>
+                              {selectedResult.trading_strategy.criteria["入场价格区间"].length > 1 && (
+                                <>
+                                  <span className="text-gray-400 text-xl">~</span>
+                                  <span className="text-3xl font-bold text-green-600">
+                                    ¥{selectedResult.trading_strategy.criteria["入场价格区间"][1].toFixed(3)}
+                                  </span>
+                                </>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1 text-xs text-green-700 dark:text-green-400">
+                              <span>参考 {selectedResult.trading_strategy.criteria["入场价格区间"].length > 1 ? '区间' : '价位'} 分批买入</span>
+                            </div>
                           </div>
-                        </div>
+                        ) : (
+                          <div className="text-center py-3">
+                            <p className="text-gray-500 dark:text-gray-400 text-sm">当前不建议买入</p>
+                            <p className="text-xs text-gray-400 mt-1">等待更好的入场时机</p>
+                          </div>
+                        )}
                       </div>
-                    )}
+
+                      {/* 卖出区间 */}
+                      <div className="bg-gradient-to-br from-red-50 to-rose-50 dark:from-red-900/20 dark:to-rose-900/20 rounded-xl p-5 border-2 border-red-300 dark:border-red-700">
+                        <div className="flex items-center gap-2 mb-3">
+                          <div className="w-8 h-8 rounded-full bg-red-500 flex items-center justify-center">
+                            <TrendingDown className="w-4 h-4 text-white" />
+                          </div>
+                          <h4 className="font-bold text-red-800 dark:text-red-400 text-base">卖出价格区间</h4>
+                        </div>
+                        {selectedResult.trading_strategy.criteria["出场价格区间"].length > 0 ? (
+                          <div>
+                            <div className="flex items-baseline gap-2 mb-2">
+                              <span className="text-3xl font-bold text-red-600">
+                                ¥{selectedResult.trading_strategy.criteria["出场价格区间"][0].toFixed(3)}
+                              </span>
+                              {selectedResult.trading_strategy.criteria["出场价格区间"].length > 1 && (
+                                <>
+                                  <span className="text-gray-400 text-xl">~</span>
+                                  <span className="text-3xl font-bold text-red-600">
+                                    ¥{selectedResult.trading_strategy.criteria["出场价格区间"][1].toFixed(3)}
+                                  </span>
+                                </>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1 text-xs text-red-700 dark:text-red-400">
+                              <span>参考 {selectedResult.trading_strategy.criteria["出场价格区间"].length > 1 ? '区间' : '价位'} 分批卖出</span>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="text-center py-3">
+                            <p className="text-gray-500 dark:text-gray-400 text-sm">当前不建议卖出</p>
+                            <p className="text-xs text-gray-400 mt-1">继续持有等待信号</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
 
                     {/* 仓位建议 */}
                     <div className="bg-yellow-50 dark:bg-yellow-900/10 rounded-lg p-4 border border-yellow-200 dark:border-yellow-800">
