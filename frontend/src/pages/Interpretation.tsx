@@ -673,31 +673,31 @@ export function Interpretation() {
                       <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 text-center">
                         <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">MA5</p>
                         <p className="text-lg font-bold text-blue-600">
-                          ¥{selectedResult.trading_strategy.ma5.toFixed(2)}
+                          ¥{selectedResult.trading_strategy.ma5.toFixed(3)}
                         </p>
                       </div>
                       <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 text-center">
                         <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">MA20</p>
                         <p className="text-lg font-bold text-blue-600">
-                          ¥{selectedResult.trading_strategy.ma20.toFixed(2)}
+                          ¥{selectedResult.trading_strategy.ma20.toFixed(3)}
                         </p>
                       </div>
                       <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-3 text-center">
                         <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">支撑位</p>
                         <p className="text-lg font-bold text-green-600">
-                          ¥{selectedResult.trading_strategy.support_1.toFixed(2)}
+                          ¥{selectedResult.trading_strategy.support_1.toFixed(3)}
                         </p>
                       </div>
                       <div className="bg-red-50 dark:bg-red-900/20 rounded-lg p-3 text-center">
                         <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">阻力位</p>
                         <p className="text-lg font-bold text-red-600">
-                          ¥{selectedResult.trading_strategy.resistance_1.toFixed(2)}
+                          ¥{selectedResult.trading_strategy.resistance_1.toFixed(3)}
                         </p>
                       </div>
                       <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 text-center">
                         <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">现价</p>
                         <p className="text-lg font-bold text-gray-900 dark:text-white">
-                          ¥{selectedResult.trading_strategy.current_price.toFixed(2)}
+                          ¥{selectedResult.trading_strategy.current_price.toFixed(3)}
                         </p>
                       </div>
                     </div>
@@ -710,7 +710,7 @@ export function Interpretation() {
                           <span className="font-medium text-green-800 dark:text-green-400">止盈位</span>
                         </div>
                         <p className="text-2xl font-bold text-green-600">
-                          ¥{selectedResult.trading_strategy.criteria["止盈位"].toFixed(2)}
+                          ¥{selectedResult.trading_strategy.criteria["止盈位"].toFixed(3)}
                         </p>
                       </div>
                       <div className="bg-red-50 dark:bg-red-900/20 rounded-lg p-4 border border-red-200 dark:border-red-800">
@@ -719,7 +719,7 @@ export function Interpretation() {
                           <span className="font-medium text-red-800 dark:text-red-400">止损位</span>
                         </div>
                         <p className="text-2xl font-bold text-red-600">
-                          ¥{selectedResult.trading_strategy.criteria["止损位"].toFixed(2)}
+                          ¥{selectedResult.trading_strategy.criteria["止损位"].toFixed(3)}
                         </p>
                       </div>
                     </div>
@@ -768,13 +768,13 @@ export function Interpretation() {
                           <h4 className="font-semibold text-blue-800 dark:text-blue-400 mb-2">入场价格区间</h4>
                           <div className="flex items-center gap-2">
                             <span className="text-lg font-bold text-blue-600">
-                              ¥{selectedResult.trading_strategy.criteria["入场价格区间"][0].toFixed(2)}
+                              ¥{selectedResult.trading_strategy.criteria["入场价格区间"][0].toFixed(3)}
                             </span>
                             {selectedResult.trading_strategy.criteria["入场价格区间"].length > 1 && (
                               <>
                                 <span className="text-gray-500">-</span>
                                 <span className="text-lg font-bold text-blue-600">
-                                  ¥{selectedResult.trading_strategy.criteria["入场价格区间"][1].toFixed(2)}
+                                  ¥{selectedResult.trading_strategy.criteria["入场价格区间"][1].toFixed(3)}
                                 </span>
                               </>
                             )}
@@ -785,13 +785,13 @@ export function Interpretation() {
                           <h4 className="font-semibold text-purple-800 dark:text-purple-400 mb-2">出场价格区间</h4>
                           <div className="flex items-center gap-2">
                             <span className="text-lg font-bold text-purple-600">
-                              ¥{selectedResult.trading_strategy.criteria["出场价格区间"][0].toFixed(2)}
+                              ¥{selectedResult.trading_strategy.criteria["出场价格区间"][0].toFixed(3)}
                             </span>
                             {selectedResult.trading_strategy.criteria["出场价格区间"].length > 1 && (
                               <>
                                 <span className="text-gray-500">-</span>
                                 <span className="text-lg font-bold text-purple-600">
-                                  ¥{selectedResult.trading_strategy.criteria["出场价格区间"][1].toFixed(2)}
+                                  ¥{selectedResult.trading_strategy.criteria["出场价格区间"][1].toFixed(3)}
                                 </span>
                               </>
                             )}
@@ -857,31 +857,31 @@ export function Interpretation() {
                         <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3">
                           <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">现价</p>
                           <p className="text-lg font-bold text-gray-900 dark:text-white">
-                            ¥{selectedResult.daily_data.current_price.toFixed(2)}
+                            ¥{selectedResult.daily_data.current_price.toFixed(3)}
                           </p>
                         </div>
                         <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3">
                           <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">昨收</p>
                           <p className="text-lg font-bold text-gray-900 dark:text-white">
-                            ¥{selectedResult.daily_data.prev_close.toFixed(2)}
+                            ¥{selectedResult.daily_data.prev_close.toFixed(3)}
                           </p>
                         </div>
                         <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3">
                           <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">开盘</p>
                           <p className="text-lg font-bold text-gray-900 dark:text-white">
-                            ¥{selectedResult.daily_data.open_price.toFixed(2)}
+                            ¥{selectedResult.daily_data.open_price.toFixed(3)}
                           </p>
                         </div>
                         <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3">
                           <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">最高</p>
                           <p className="text-lg font-bold text-red-600">
-                            ¥{selectedResult.daily_data.high.toFixed(2)}
+                            ¥{selectedResult.daily_data.high.toFixed(3)}
                           </p>
                         </div>
                         <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3">
                           <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">最低</p>
                           <p className="text-lg font-bold text-green-600">
-                            ¥{selectedResult.daily_data.low.toFixed(2)}
+                            ¥{selectedResult.daily_data.low.toFixed(3)}
                           </p>
                         </div>
                       </div>
@@ -1070,7 +1070,7 @@ export function Interpretation() {
                         <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
                           <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">成本价</p>
                           <p className="text-xl font-bold text-gray-900 dark:text-white">
-                            ¥{selectedResult.holding_impact.cost_price.toFixed(2)}
+                            ¥{selectedResult.holding_impact.cost_price.toFixed(3)}
                           </p>
                         </div>
                         <div className={`rounded-lg p-4 ${

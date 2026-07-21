@@ -51,7 +51,7 @@ export function Dashboard() {
       return [' 暂无实时价格数据'];
     }
 
-    guidance.push(`💰 现价 ¥${current_price.toFixed(2)}`);
+    guidance.push(`💰 现价 ¥${current_price.toFixed(3)}`);
 
     if (change_pct !== null) {
       if (change_pct > 0) {
@@ -74,17 +74,17 @@ export function Dashboard() {
     }
 
     if (state === 'CRISIS') {
-      guidance.push(`⚠️ 危机状态：建议立即减仓或清仓，现价 ¥${current_price.toFixed(2)} 附近止损`);
+      guidance.push(`⚠️ 危机状态：建议立即减仓或清仓，现价 ¥${current_price.toFixed(3)} 附近止损`);
     } else if (state.includes('BULL_TREND')) {
-      guidance.push(`📈 牛市趋势：可在回调至 ¥${(current_price * 0.97).toFixed(2)} 附近加仓`);
+      guidance.push(`📈 牛市趋势：可在回调至 ¥${(current_price * 0.97).toFixed(3)} 附近加仓`);
     } else if (state.includes('BULL_MEANREV')) {
-      guidance.push(`📊 牛市回调：可逢低在 ¥${(current_price * 0.95).toFixed(2)} 附近分批买入`);
+      guidance.push(`📊 牛市回调：可逢低在 ¥${(current_price * 0.95).toFixed(3)} 附近分批买入`);
     } else if (state.includes('BEAR_TREND')) {
-      guidance.push(`📉 熊市趋势：反弹至 ¥${(current_price * 1.03).toFixed(2)} 附近减仓`);
+      guidance.push(`📉 熊市趋势：反弹至 ¥${(current_price * 1.03).toFixed(3)} 附近减仓`);
     } else if (state.includes('BEAR_MEANREV')) {
-      guidance.push(`🔄 熊市反弹：谨慎参与，止损设在 ¥${(current_price * 0.97).toFixed(2)}`);
-    } else if (state === 'SIDEWAYS') {
-      guidance.push(`↔️ 横盘震荡：可在 ¥${(current_price * 0.97).toFixed(2)} - ¥${(current_price * 1.03).toFixed(2)} 区间高抛低吸`);
+      guidance.push(`🔄 熊市反弹：谨慎参与，止损设在 ¥${(current_price * 0.97).toFixed(3)}`);
+    } else if (state.includes('SIDEWAYS')) {
+      guidance.push(`↔️ 横盘震荡：可在 ¥${(current_price * 0.97).toFixed(3)} - ¥${(current_price * 1.03).toFixed(3)} 区间高抛低吸`);
     } else if (state === 'TRANSITION') {
       guidance.push(`🔄 状态转换中：观望为主，等待方向明确`);
     }
@@ -256,7 +256,7 @@ export function Dashboard() {
                             </td>
                             <td className="py-3 px-4 text-center">
                               <span className="font-medium text-gray-900 dark:text-white">
-                                {result.current_price ? `¥${result.current_price.toFixed(2)}` : '-'}
+                                {result.current_price ? `¥${result.current_price.toFixed(3)}` : '-'}
                               </span>
                             </td>
                             <td className="py-3 px-4 text-center">
