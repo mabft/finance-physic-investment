@@ -725,19 +725,40 @@ async def interpret_analysis(code: str):
 
 @router.get("/all")
 async def interpret_all():
-    from api_routes.config import load_holdings
+    from api_routes.config import load_holdings, INSTRUMENTS
     from physics_metrics import compute_all_metrics, classify_market_state, screen_score, position_multiplier
     from data_fetcher import DataFetcher
+    import time
     
     try:
         fetcher = DataFetcher()
         holdings = load_holdings()
         
-        symbols = []
-        code_to_symbol = {}
+        # 构建基金代码集合
+        fund_code_set = set()
+        for item in INSTRUMENTS.get("场外", []):
+            code = item.get("code", "")
+            if code:
+                fund_code_set.add(code)
+        
+        # 分离股票和基金持仓
+        stock_holdings = []
+        fund_holdings = []
         for holding in holdings:
             code = holding.get("code", "")
             if not code:
+                continue
+            if code in fund_code_set:
+                fund_holdings.append(holding)
+            else:
+                stock_holdings.append(holding)
+        
+        # 处理股票持仓
+        stock_symbols = []
+        code_to_symbol = {}
+        for holding in stock_holdings:
+            code = holding.get("code", "")
+            if not code or len(code) != 6:
                 continue
             if code.startswith('6') or code.startswith('5'):
                 symbol = f"sh{code}"
@@ -745,15 +766,17 @@ async def interpret_all():
                 symbol = f"sz{code}"
             else:
                 continue
-            symbols.append(symbol)
+            stock_symbols.append(symbol)
             code_to_symbol[code] = symbol
         
-        realtime_data = {}
-        if symbols:
-            realtime_data = fetcher.fetch_sina_realtime(symbols)
+        stock_realtime_data = {}
+        if stock_symbols:
+            stock_realtime_data = fetcher.fetch_sina_realtime(stock_symbols)
         
         results = []
-        for holding in holdings:
+        
+        # 处理股票
+        for holding in stock_holdings:
             code = holding.get("code", "")
             name = holding.get("name", "")
             cost_price = holding.get("cost_price", 0)
@@ -766,174 +789,50 @@ async def interpret_all():
                 continue
             
             prices = fetcher.fetch_sina_kline(symbol)
-            
             if not prices or len(prices) < 60:
                 continue
             
-            metrics = compute_all_metrics(prices)
-            state = classify_market_state(metrics)
-            score = screen_score(metrics)
-            multiplier = position_multiplier(metrics)
+            rt = stock_realtime_data.get(symbol, {})
             
-            interpretations = interpret_metrics(metrics)
-            state_info = interpret_market_state(state["state_name"])
-            
-            rt = realtime_data.get(symbol, {})
-            current_price = rt.get("current", 0)
-            prev_close = rt.get("prev_close", 0)
-            open_price = rt.get("open", 0)
-            high = rt.get("high", 0)
-            low = rt.get("low", 0)
-            
-            change_pct = 0
-            change_amount = 0
-            if prev_close > 0 and current_price > 0:
-                change_amount = current_price - prev_close
-                change_pct = (change_amount / prev_close) * 100
-            
-            profit_pct = 0
-            profit_amount = 0
-            if cost_price > 0 and current_price > 0:
-                profit_amount = current_price - cost_price
-                profit_pct = (profit_amount / cost_price) * 100
-            
-            daily_analysis = analyze_realtime_data(rt)
-            
-            impact_analysis = []
-            if change_pct > 2:
-                impact_analysis.append(f"📈 大涨{change_pct:.2f}%，持仓市值显著增加")
-            elif change_pct > 0.5:
-                impact_analysis.append(f"📊 上涨{change_pct:.2f}%，持仓小幅增值")
-            elif change_pct < -2:
-                impact_analysis.append(f"📉 大跌{change_pct:.2f}%，持仓市值明显缩水")
-            elif change_pct < -0.5:
-                impact_analysis.append(f"📊 下跌{change_pct:.2f}%，持仓小幅贬值")
-            else:
-                impact_analysis.append(f"➡️ 平盘整理，持仓市值基本持平")
-            
-            if profit_pct > 10:
-                impact_analysis.append(f"✅ 持仓盈利{profit_pct:.2f}%，收益丰厚")
-            elif profit_pct > 0:
-                impact_analysis.append(f"✅ 持仓盈利{profit_pct:.2f}%，处于盈利状态")
-            elif profit_pct > -10:
-                impact_analysis.append(f" 持仓亏损{profit_pct:.2f}%，亏损可控")
-            else:
-                impact_analysis.append(f" 持仓亏损{profit_pct:.2f}%，亏损较大")
-            
-            if state == "CRISIS":
-                impact_analysis.append("⚠️ 危机状态，建议考虑减仓止损")
-            elif state == "BULL_TREND":
-                impact_analysis.append(" 牛市趋势，可继续持有或加仓")
-            elif state == "BEAR_TREND":
-                impact_analysis.append(" 熊市趋势，建议谨慎持有或减仓")
-            
-            daily_data_obj = {
-                "current_price": round(current_price, 3) if current_price else 0,
-                "prev_close": round(prev_close, 3) if prev_close else 0,
-                "open_price": round(open_price, 3) if open_price else 0,
-                "high": round(high, 3) if high else 0,
-                "low": round(low, 3) if low else 0,
-                "change_amount": round(change_amount, 4),
-                "change_pct": round(change_pct, 2),
-                "daily_analysis": daily_analysis,
-            }
-            
-            holding_impact_obj = {
-                "cost_price": round(cost_price, 3) if cost_price else 0,
-                "profit_amount": round(profit_amount, 2),
-                "profit_pct": round(profit_pct, 2),
-                "impact_analysis": impact_analysis,
-                "position_multiplier": round(multiplier, 4),
-            }
-            
-            combined = combined_analysis(metrics, daily_data_obj, holding_impact_obj, state["state_name"])
-            
-            # 生成交易策略
-            trading_strategy = generate_trading_strategy(
-                metrics, daily_data_obj, holding_impact_obj, state["state_name"], prices
+            result = _build_interpretation_result(
+                fetcher, code, name, cost_price, prices, rt, is_fund=False
             )
+            if result:
+                results.append(result)
             
-            # 获取消息面数据
-            news_data = []
-            news_summary = {
-                "total": 0,
-                "positive": 0,
-                "negative": 0,
-                "neutral": 0,
-                "important": 0,
-                "overall_sentiment": "neutral",
-                "overall_label": "中性",
-                "key_news": [],
-            }
+            time.sleep(0.3)
+        
+        # 处理基金
+        for holding in fund_holdings:
+            code = holding.get("code", "")
+            name = holding.get("name", "")
+            cost_price = holding.get("cost_price", 0)
             
-            try:
-                raw_news = fetcher.fetch_stock_news(code, name, max_count=15)
-                if raw_news:
-                    analyzed_news = fetcher.analyze_news_sentiment(raw_news)
-                    # 筛选：只显示利好、利空和重要消息
-                    filtered_news = [
-                        n for n in analyzed_news
-                        if n["sentiment"] != "neutral" or n["importance"] != "normal"
-                    ]
-                    # 按重要程度和时效排序
-                    filtered_news.sort(key=lambda x: (
-                        0 if x["importance"] == "high" else 1 if x["importance"] == "medium" else 2,
-                        0 if x["sentiment"] == "negative" else 1,
-                    ), reverse=False)
-                    
-                    news_data = filtered_news[:10]
-                    
-                    pos = sum(1 for n in analyzed_news if n["sentiment"] == "positive")
-                    neg = sum(1 for n in analyzed_news if n["sentiment"] == "negative")
-                    neu = sum(1 for n in analyzed_news if n["sentiment"] == "neutral")
-                    imp = sum(1 for n in analyzed_news if n["importance"] in ("high", "medium"))
-                    
-                    news_summary = {
-                        "total": len(analyzed_news),
-                        "positive": pos,
-                        "negative": neg,
-                        "neutral": neu,
-                        "important": imp,
-                        "overall_sentiment": "positive" if pos > neg else "negative" if neg > pos else "neutral",
-                        "overall_label": "偏利好" if pos > neg else "偏利空" if neg > pos else "中性",
-                        "key_news": [
-                            {
-                                "title": n["title"],
-                                "sentiment_label": n["sentiment_label"],
-                                "importance": n["importance"],
-                                "date": n["date"],
-                            }
-                            for n in filtered_news[:5]
-                        ],
-                    }
-            except Exception as e:
-                print(f"Error fetching news for {name}: {e}")
+            if not code:
+                continue
             
-            results.append({
-                "code": code,
-                "name": name,
-                "metrics": {
-                    "temperature": round(metrics.get("temperature", 0), 4),
-                    "entropy": round(metrics.get("entropy", 0), 4),
-                    "momentum": round(metrics.get("momentum", 0), 4),
-                    "hurst": round(metrics.get("hurst", 0), 4),
-                },
-                "state": state["state_name"],
-                "state_info": state_info,
-                "interpretations": interpretations,
-                "screen_score": score,
-                "position_multiplier": round(multiplier, 4),
-                "daily_data": daily_data_obj,
-                "holding_impact": holding_impact_obj,
-                "combined_analysis": combined,
-                "trading_strategy": trading_strategy,
-                "news": {
-                    "summary": news_summary,
-                    "articles": news_data,
-                },
-            })
+            prices = fetcher.fetch_fund_nav_history(code)
+            if not prices or len(prices) < 60:
+                continue
             
-            import time
+            # 获取基金实时估值
+            nav_data = fetcher.fetch_fund_nav(code)
+            rt = {}
+            if nav_data:
+                rt = {
+                    "current": nav_data.get("gsz", 0),
+                    "prev_close": nav_data.get("dwjz", 0),
+                    "open": nav_data.get("dwjz", 0),
+                    "high": nav_data.get("gsz", 0),
+                    "low": nav_data.get("gsz", 0),
+                }
+            
+            result = _build_interpretation_result(
+                fetcher, code, name, cost_price, prices, rt, is_fund=True
+            )
+            if result:
+                results.append(result)
+            
             time.sleep(0.3)
         
         return {
@@ -942,3 +841,174 @@ async def interpret_all():
         }
     except Exception as e:
         return {"error": str(e)}, 500
+
+
+def _build_interpretation_result(fetcher, code, name, cost_price, prices, rt, is_fund):
+    """构建单个持仓的解读结果"""
+    from physics_metrics import compute_all_metrics, classify_market_state, screen_score, position_multiplier
+    
+    try:
+        metrics = compute_all_metrics(prices)
+        state = classify_market_state(metrics)
+        score = screen_score(metrics)
+        multiplier = position_multiplier(metrics)
+        
+        interpretations = interpret_metrics(metrics)
+        state_info = interpret_market_state(state["state_name"])
+        
+        current_price = rt.get("current", 0)
+        prev_close = rt.get("prev_close", 0)
+        open_price = rt.get("open", 0)
+        high = rt.get("high", 0)
+        low = rt.get("low", 0)
+        
+        change_pct = 0
+        change_amount = 0
+        if prev_close > 0 and current_price > 0:
+            change_amount = current_price - prev_close
+            change_pct = (change_amount / prev_close) * 100
+        
+        profit_pct = 0
+        profit_amount = 0
+        if cost_price > 0 and current_price > 0:
+            profit_amount = current_price - cost_price
+            profit_pct = (profit_amount / cost_price) * 100
+        
+        daily_analysis = analyze_realtime_data(rt)
+        
+        impact_analysis = []
+        if change_pct > 2:
+            impact_analysis.append(f"📈 大涨{change_pct:.2f}%，持仓市值显著增加")
+        elif change_pct > 0.5:
+            impact_analysis.append(f"📊 上涨{change_pct:.2f}%，持仓小幅增值")
+        elif change_pct < -2:
+            impact_analysis.append(f"📉 大跌{change_pct:.2f}%，持仓市值明显缩水")
+        elif change_pct < -0.5:
+            impact_analysis.append(f"📊 下跌{change_pct:.2f}%，持仓小幅贬值")
+        else:
+            impact_analysis.append(f"➡️ 平盘整理，持仓市值基本持平")
+        
+        if profit_pct > 10:
+            impact_analysis.append(f"✅ 持仓盈利{profit_pct:.2f}%，收益丰厚")
+        elif profit_pct > 0:
+            impact_analysis.append(f"✅ 持仓盈利{profit_pct:.2f}%，处于盈利状态")
+        elif profit_pct > -10:
+            impact_analysis.append(f" 持仓亏损{profit_pct:.2f}%，亏损可控")
+        else:
+            impact_analysis.append(f" 持仓亏损{profit_pct:.2f}%，亏损较大")
+        
+        if state == "CRISIS":
+            impact_analysis.append("⚠️ 危机状态，建议考虑减仓止损")
+        elif state == "BULL_TREND":
+            impact_analysis.append(" 牛市趋势，可继续持有或加仓")
+        elif state == "BEAR_TREND":
+            impact_analysis.append(" 熊市趋势，建议谨慎持有或减仓")
+        
+        daily_data_obj = {
+            "current_price": round(current_price, 3) if current_price else 0,
+            "prev_close": round(prev_close, 3) if prev_close else 0,
+            "open_price": round(open_price, 3) if open_price else 0,
+            "high": round(high, 3) if high else 0,
+            "low": round(low, 3) if low else 0,
+            "change_amount": round(change_amount, 4),
+            "change_pct": round(change_pct, 2),
+            "daily_analysis": daily_analysis,
+        }
+        
+        holding_impact_obj = {
+            "cost_price": round(cost_price, 3) if cost_price else 0,
+            "profit_amount": round(profit_amount, 2),
+            "profit_pct": round(profit_pct, 2),
+            "impact_analysis": impact_analysis,
+            "position_multiplier": round(multiplier, 4),
+        }
+        
+        combined = combined_analysis(metrics, daily_data_obj, holding_impact_obj, state["state_name"])
+        
+        # 生成交易策略
+        trading_strategy = generate_trading_strategy(
+            metrics, daily_data_obj, holding_impact_obj, state["state_name"], prices
+        )
+        
+        # 获取消息面数据
+        news_data = []
+        news_summary = {
+            "total": 0,
+            "positive": 0,
+            "negative": 0,
+            "neutral": 0,
+            "important": 0,
+            "overall_sentiment": "neutral",
+            "overall_label": "中性",
+            "key_news": [],
+        }
+        
+        try:
+            raw_news = fetcher.fetch_stock_news(code, name, max_count=15)
+            if raw_news:
+                analyzed_news = fetcher.analyze_news_sentiment(raw_news)
+                # 筛选：只显示利好、利空和重要消息
+                filtered_news = [
+                    n for n in analyzed_news
+                    if n["sentiment"] != "neutral" or n["importance"] != "normal"
+                ]
+                # 按重要程度和时效排序
+                filtered_news.sort(key=lambda x: (
+                    0 if x["importance"] == "high" else 1 if x["importance"] == "medium" else 2,
+                    0 if x["sentiment"] == "negative" else 1,
+                ), reverse=False)
+                
+                news_data = filtered_news[:10]
+                
+                pos = sum(1 for n in analyzed_news if n["sentiment"] == "positive")
+                neg = sum(1 for n in analyzed_news if n["sentiment"] == "negative")
+                neu = sum(1 for n in analyzed_news if n["sentiment"] == "neutral")
+                imp = sum(1 for n in analyzed_news if n["importance"] in ("high", "medium"))
+                
+                news_summary = {
+                    "total": len(analyzed_news),
+                    "positive": pos,
+                    "negative": neg,
+                    "neutral": neu,
+                    "important": imp,
+                    "overall_sentiment": "positive" if pos > neg else "negative" if neg > pos else "neutral",
+                    "overall_label": "偏利好" if pos > neg else "偏利空" if neg > pos else "中性",
+                    "key_news": [
+                        {
+                            "title": n["title"],
+                            "sentiment_label": n["sentiment_label"],
+                            "importance": n["importance"],
+                            "date": n["date"],
+                        }
+                        for n in filtered_news[:5]
+                    ],
+                }
+        except Exception as e:
+            print(f"Error fetching news for {name}: {e}")
+        
+        return {
+            "code": code,
+            "name": name,
+            "metrics": {
+                "temperature": round(metrics.get("temperature", 0), 4),
+                "entropy": round(metrics.get("entropy", 0), 4),
+                "momentum": round(metrics.get("momentum", 0), 4),
+                "hurst": round(metrics.get("hurst", 0), 4),
+            },
+            "state": state["state_name"],
+            "state_info": state_info,
+            "interpretations": interpretations,
+            "screen_score": score,
+            "position_multiplier": round(multiplier, 4),
+            "daily_data": daily_data_obj,
+            "holding_impact": holding_impact_obj,
+            "combined_analysis": combined,
+            "trading_strategy": trading_strategy,
+            "news": {
+                "summary": news_summary,
+                "articles": news_data,
+            },
+        }
+    except Exception as e:
+        print(f"Error building interpretation for {name} ({code}): {e}")
+        return None
