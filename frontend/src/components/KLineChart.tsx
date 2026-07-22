@@ -33,21 +33,20 @@ interface KLineData {
   high: number;
   low: number;
   volume: number;
-  turnover: number;
 }
 
-interface TurnoverAnalysis {
-  avg_turnover: number;
-  current_turnover: number;
-  turnover_trend: string;
+interface VolumeAnalysis {
+  avg_volume: number;
+  current_volume: number;
+  volume_trend: string;
   market_position: string;
-  turnover_level: string;
+  volume_level: string;
   analysis: string;
 }
 
 interface KLineChartProps {
   data: KLineData[];
-  turnoverAnalysis: TurnoverAnalysis;
+  volumeAnalysis: VolumeAnalysis;
 }
 
 function getMarketPositionColor(position: string) {
@@ -69,7 +68,7 @@ function getTrendIcon(trend: string) {
   return '→';
 }
 
-export function KLineChart({ data, turnoverAnalysis }: KLineChartProps) {
+export function KLineChart({ data, volumeAnalysis }: KLineChartProps) {
   const chartRef = useRef<HTMLCanvasElement>(null);
   const chartInstanceRef = useRef<Chart | null>(null);
 
@@ -86,7 +85,6 @@ export function KLineChart({ data, turnoverAnalysis }: KLineChartProps) {
     const labels = data.map(d => d.date.slice(5)); // MM-DD
     const closes = data.map(d => d.close);
     const volumes = data.map(d => d.volume);
-    const turnovers = data.map(d => d.turnover);
 
     // 计算MA5和MA20
     const ma5 = closes.map((_, i) => {
@@ -156,20 +154,6 @@ export function KLineChart({ data, turnoverAnalysis }: KLineChartProps) {
             yAxisID: 'y1',
             order: 4,
           },
-          {
-            type: 'line',
-            label: '换手率(%)',
-            data: turnovers,
-            borderColor: 'rgb(236, 72, 153)',
-            backgroundColor: 'rgba(236, 72, 153, 0.1)',
-            borderWidth: 1.5,
-            pointRadius: 0,
-            pointHoverRadius: 3,
-            tension: 0.1,
-            yAxisID: 'y2',
-            order: 0,
-            fill: true,
-          },
         ],
       },
       options: {
@@ -198,7 +182,6 @@ export function KLineChart({ data, turnoverAnalysis }: KLineChartProps) {
               label: (context) => {
                 const label = context.dataset.label || '';
                 const value = context.parsed.y;
-                if (label === '换手率(%)') return `${label}: ${value.toFixed(2)}%`;
                 if (label === '成交量') return `${label}: ${(value / 10000).toFixed(1)}万`;
                 return `${label}: ${value.toFixed(3)}`;
               },
@@ -232,12 +215,6 @@ export function KLineChart({ data, turnoverAnalysis }: KLineChartProps) {
               callback: (value) => `${(Number(value) / 10000).toFixed(0)}万`,
             },
           },
-          y2: {
-            type: 'linear',
-            display: false,
-            position: 'right',
-            grid: { drawOnChartArea: false },
-          },
         },
       },
     });
@@ -267,62 +244,115 @@ export function KLineChart({ data, turnoverAnalysis }: KLineChartProps) {
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+      <div className="mb-4">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2 mb-2">
           <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
           </svg>
-          日K线图（近60日）
+          日K线图与成交量分析（近60日）
         </h3>
-        <div className="flex items-center gap-2">
-          <span className={`text-xs px-2 py-1 rounded-full font-medium ${getMarketPositionColor(turnoverAnalysis.market_position)}`}>
-            {turnoverAnalysis.market_position}
-          </span>
-          <span className="text-xs text-gray-500 dark:text-gray-400">
-            换手率: <span className={`font-bold ${getTurnoverLevelColor(turnoverAnalysis.turnover_level)}`}>
-              {turnoverAnalysis.turnover_level}
-            </span>
-            {getTrendIcon(turnoverAnalysis.turnover_trend)}
-          </span>
-        </div>
-      </div>
-
-      {/* 换手率分析摘要 */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-        <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3">
-          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">当前换手率</p>
-          <p className={`text-lg font-bold ${getTurnoverLevelColor(turnoverAnalysis.turnover_level)}`}>
-            {turnoverAnalysis.current_turnover.toFixed(2)}%
-          </p>
-        </div>
-        <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3">
-          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">20日均值</p>
-          <p className="text-lg font-bold text-gray-900 dark:text-white">
-            {turnoverAnalysis.avg_turnover.toFixed(2)}%
-          </p>
-        </div>
-        <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3">
-          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">换手趋势</p>
-          <p className={`text-lg font-bold ${
-            turnoverAnalysis.turnover_trend === '上升' ? 'text-red-600' :
-            turnoverAnalysis.turnover_trend === '下降' ? 'text-green-600' : 'text-gray-600'
-          }`}>
-            {getTrendIcon(turnoverAnalysis.turnover_trend)} {turnoverAnalysis.turnover_trend}
-          </p>
-        </div>
-        <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3">
-          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">市场位置</p>
-          <p className="text-lg font-bold text-gray-900 dark:text-white">
-            {turnoverAnalysis.market_position}
-          </p>
-        </div>
-      </div>
-
-      {/* 分析说明 */}
-      <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-        <p className="text-sm text-blue-800 dark:text-blue-300">
-          <strong>分析：</strong>{turnoverAnalysis.analysis}
+        <p className="text-xs text-gray-500 dark:text-gray-400">
+          通过价格走势和成交量变化，判断当前市场活跃度和所处位置
         </p>
+      </div>
+
+      {/* 成交量分析摘要 - 更直观的展示 */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        {/* 左侧：成交量数据 */}
+        <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30 rounded-lg p-4">
+          <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-300 mb-3 flex items-center gap-2">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+            成交量数据
+          </h4>
+          <div className="space-y-2">
+            <div className="flex justify-between items-center">
+              <span className="text-xs text-gray-600 dark:text-gray-400">今日成交量</span>
+              <span className={`text-base font-bold ${getTurnoverLevelColor(volumeAnalysis.volume_level)}`}>
+                {(volumeAnalysis.current_volume / 10000).toFixed(1)}万手
+              </span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-xs text-gray-600 dark:text-gray-400">20日平均量</span>
+              <span className="text-base font-bold text-gray-900 dark:text-white">
+                {(volumeAnalysis.avg_volume / 10000).toFixed(1)}万手
+              </span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-xs text-gray-600 dark:text-gray-400">量能水平</span>
+              <span className={`text-base font-bold ${getTurnoverLevelColor(volumeAnalysis.volume_level)}`}>
+                {volumeAnalysis.volume_level}
+              </span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-xs text-gray-600 dark:text-gray-400">变化趋势</span>
+              <span className={`text-base font-bold ${
+                volumeAnalysis.volume_trend === '上升' ? 'text-red-600' :
+                volumeAnalysis.volume_trend === '下降' ? 'text-green-600' : 'text-gray-600'
+              }`}>
+                {getTrendIcon(volumeAnalysis.volume_trend)} {volumeAnalysis.volume_trend}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* 右侧：市场位置判断 */}
+        <div className={`rounded-lg p-4 border-2 ${
+          volumeAnalysis.market_position === '高位' ? 'bg-red-50 dark:bg-red-900/20 border-red-300 dark:border-red-700' :
+          volumeAnalysis.market_position === '低位' ? 'bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-700' :
+          'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-300 dark:border-yellow-700'
+        }`}>
+          <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+            <span className={
+              volumeAnalysis.market_position === '高位' ? 'text-red-900 dark:text-red-300' :
+              volumeAnalysis.market_position === '低位' ? 'text-green-900 dark:text-green-300' :
+              'text-yellow-900 dark:text-yellow-300'
+            }>
+              市场位置判断
+            </span>
+          </h4>
+          <div className="mb-3">
+            <p className={`text-2xl font-bold mb-1 ${
+              volumeAnalysis.market_position === '高位' ? 'text-red-600' :
+              volumeAnalysis.market_position === '低位' ? 'text-green-600' :
+              'text-yellow-600'
+            }`}>
+              {volumeAnalysis.market_position}
+            </p>
+            <p className="text-xs text-gray-600 dark:text-gray-400">
+              {volumeAnalysis.market_position === '高位' && '价格处于高位，成交量活跃，需警惕回调风险'}
+              {volumeAnalysis.market_position === '低位' && '价格处于低位，成交量萎缩，可能是底部区域'}
+              {volumeAnalysis.market_position === '震荡' && '价格在区间内波动，成交量平稳，等待方向选择'}
+            </p>
+          </div>
+          <div className="pt-2 border-t border-gray-200 dark:border-gray-600">
+            <p className="text-xs text-gray-700 dark:text-gray-300">
+              <strong>含义：</strong>
+              {volumeAnalysis.market_position === '高位' && '高位放量可能意味着主力出货，建议谨慎'}
+              {volumeAnalysis.market_position === '低位' && '低位缩量可能意味着卖压减轻，可关注企稳信号'}
+              {volumeAnalysis.market_position === '震荡' && '震荡整理阶段，建议观望等待突破方向'}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* 分析说明 - 更突出 */}
+      <div className="mb-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+        <div className="flex items-start gap-2">
+          <svg className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <div>
+            <p className="text-sm font-semibold text-blue-900 dark:text-blue-300 mb-1">专业分析</p>
+            <p className="text-sm text-blue-800 dark:text-blue-300">
+              {volumeAnalysis.analysis}
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* 图表 */}
@@ -342,14 +372,30 @@ export function KLineChart({ data, turnoverAnalysis }: KLineChartProps) {
           <span className="w-3 h-0.5 bg-purple-500 inline-block"></span> MA20
         </span>
         <span className="flex items-center gap-1">
-          <span className="w-3 h-2 bg-red-400/60 inline-block rounded-sm"></span> 涨量
+          <span className="w-3 h-2 bg-red-400/60 inline-block rounded-sm"></span> 放量上涨
         </span>
         <span className="flex items-center gap-1">
-          <span className="w-3 h-2 bg-green-400/60 inline-block rounded-sm"></span> 跌量
+          <span className="w-3 h-2 bg-green-400/60 inline-block rounded-sm"></span> 缩量下跌
         </span>
-        <span className="flex items-center gap-1">
-          <span className="w-3 h-0.5 bg-pink-500 inline-block"></span> 换手率
-        </span>
+      </div>
+
+      {/* 阅读指南 */}
+      <div className="mt-3 p-3 bg-gray-50 dark:bg-gray-700/30 rounded-lg">
+        <p className="text-xs text-gray-500 dark:text-gray-400 font-medium mb-1">如何看懂这张图：</p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs text-gray-600 dark:text-gray-400">
+          <div className="flex items-start gap-1">
+            <span className="text-blue-500 font-bold flex-shrink-0">1.</span>
+            <span>上方折线为价格走势，蓝线是收盘价，橙线(MA5)和紫线(MA20)是均线，均线交叉可判断趋势方向</span>
+          </div>
+          <div className="flex items-start gap-1">
+            <span className="text-blue-500 font-bold flex-shrink-0">2.</span>
+            <span>下方柱状图是每日成交量，红色表示当日上涨，绿色表示当日下跌，柱子越高代表成交越活跃</span>
+          </div>
+          <div className="flex items-start gap-1">
+            <span className="text-blue-500 font-bold flex-shrink-0">3.</span>
+            <span>结合上方成交量数据和市场位置判断，高位放量需警惕，低位缩量可能是底部信号</span>
+          </div>
+        </div>
       </div>
     </div>
   );

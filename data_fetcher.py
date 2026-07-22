@@ -63,6 +63,36 @@ class DataFetcher:
             print(f"Error fetching Sina K-line for {symbol}: {e}")
             return []
 
+    def fetch_sina_kline_detail(self, symbol, datalen=KLINE_DATA_LEN):
+        """
+        通过新浪 API 获取日 K 线详细数据（含 OHLCV）
+        symbol: sh600036 / sz002049 格式
+        返回：[{"date", "open", "close", "high", "low", "volume"}, ...]
+        """
+        url = (f"https://money.finance.sina.com.cn/quotes_service/api/json_v2.php/"
+               f"CN_MarketData.getKLineData?symbol={symbol}&scale=240&ma=no&datalen={datalen}")
+        headers = API_HEADERS["Sina"].copy()
+        try:
+            resp = self.session.get(url, headers=headers, timeout=15)
+            data = resp.json()
+            result = []
+            for item in data:
+                try:
+                    result.append({
+                        "date": item.get("day", ""),
+                        "open": float(item.get("open", 0)),
+                        "close": float(item.get("close", 0)),
+                        "high": float(item.get("high", 0)),
+                        "low": float(item.get("low", 0)),
+                        "volume": int(item.get("volume", 0)),
+                    })
+                except:
+                    pass
+            return result
+        except Exception as e:
+            print(f"Error fetching Sina K-line detail for {symbol}: {e}")
+            return []
+
     def fetch_eastmoney_kline_detail(self, symbol, datalen=KLINE_DATA_LEN):
         """
         通过东方财富API获取日K线详细数据（含成交量、换手率）

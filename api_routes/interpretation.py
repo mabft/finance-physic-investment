@@ -5,118 +5,166 @@ from math import isnan
 router = APIRouter()
 
 
-def analyze_turnover_rate(kline_data):
+def analyze_volume_rate(kline_data):
     """
-    分析换手率数据，判断市场状态
+    分析成交量/净值变化，判断市场活跃度
+    对于有成交量数据的标的，分析成交量变化率
+    对于无成交量数据的标的（如场外基金），基于价格走势判断市场位置
     返回: {
-        "avg_turnover": 平均换手率,
-        "current_turnover": 当前换手率,
-        "turnover_trend": "上升/下降/平稳",
+        "avg_volume": 平均成交量,
+        "current_volume": 当前成交量,
+        "volume_trend": "上升/下降/平稳",
         "market_position": "高位/低位/震荡",
-        "turnover_level": "高/中/低",
-        "analysis": "分析说明"
+        "volume_level": "高/中/低",
+        "analysis": "分析说明",
+        "has_volume_data": 是否有成交量数据
     }
     """
     if not kline_data or len(kline_data) < 10:
         return {
-            "avg_turnover": 0,
-            "current_turnover": 0,
-            "turnover_trend": "数据不足",
+            "avg_volume": 0,
+            "current_volume": 0,
+            "volume_trend": "数据不足",
             "market_position": "数据不足",
-            "turnover_level": "数据不足",
-            "analysis": "K线数据不足，无法分析换手率"
+            "volume_level": "数据不足",
+            "analysis": "K线数据不足，无法分析",
+            "has_volume_data": False
         }
-    
-    # 提取换手率数据
-    turnovers = [item.get("turnover", 0) for item in kline_data if item.get("turnover", 0) > 0]
-    
-    if not turnovers:
-        return {
-            "avg_turnover": 0,
-            "current_turnover": 0,
-            "turnover_trend": "无数据",
-            "market_position": "无数据",
-            "turnover_level": "无数据",
-            "analysis": "无换手率数据"
-        }
-    
+
+    # 提取成交量数据
+    volumes = [item.get("volume", 0) for item in kline_data if item.get("volume", 0) > 0]
+    has_volume_data = len(volumes) > 0
+
+    # 提取价格数据（用于市场位置判断）
+    prices = [item.get("close", 0) for item in kline_data if item.get("close", 0) > 0]
+
+    # 如果没有成交量数据，基于价格走势判断市场位置
+    if not has_volume_data:
+        if prices and len(prices) >= 20:
+            current_price = prices[-1]
+            max_price = max(prices[-20:])
+            min_price = min(prices[-20:])
+            price_range = max_price - min_price
+
+            if price_range > 0:
+                price_position = (current_price - min_price) / price_range
+            else:
+                price_position = 0.5
+
+            # 近5日趋势
+            recent_5_change = (prices[-1] - prices[-5]) / prices[-5] if len(prices) >= 5 else 0
+            recent_20_change = (prices[-1] - prices[-20]) / prices[-20] if len(prices) >= 20 else 0
+
+            if price_position > 0.7:
+                market_position = "高位"
+                analysis = f"当前价格位于近20日高位区域（{price_position:.0%}位置），近期涨幅{recent_5_change:.1%}，注意回调风险"
+            elif price_position < 0.3:
+                market_position = "低位"
+                analysis = f"当前价格位于近20日低位区域（{price_position:.0%}位置），近期跌幅{recent_5_change:.1%}，可能是底部区域"
+            else:
+                market_position = "震荡"
+                analysis = f"当前价格位于近20日中间区域（{price_position:.0%}位置），市场处于震荡整理阶段"
+
+            if recent_5_change > 0.02:
+                volume_trend = "上升"
+            elif recent_5_change < -0.02:
+                volume_trend = "下降"
+            else:
+                volume_trend = "平稳"
+
+            return {
+                "avg_volume": 0,
+                "current_volume": 0,
+                "volume_trend": volume_trend,
+                "market_position": market_position,
+                "volume_level": "中",
+                "analysis": analysis,
+                "has_volume_data": False
+            }
+        else:
+            return {
+                "avg_volume": 0,
+                "current_volume": 0,
+                "volume_trend": "数据不足",
+                "market_position": "数据不足",
+                "volume_level": "数据不足",
+                "analysis": "价格数据不足，无法判断市场位置",
+                "has_volume_data": False
+            }
+
+    # 以下是有成交量数据的分析逻辑
     # 计算统计指标
-    recent_5 = turnovers[-5:] if len(turnovers) >= 5 else turnovers
-    recent_20 = turnovers[-20:] if len(turnovers) >= 20 else turnovers
+    recent_5 = volumes[-5:] if len(volumes) >= 5 else volumes
+    recent_20 = volumes[-20:] if len(volumes) >= 20 else volumes
     avg_20 = sum(recent_20) / len(recent_20)
-    current = turnovers[-1]
-    
-    # 判断换手率水平
+    current = volumes[-1]
+
+    # 判断成交量水平
     if current > avg_20 * 1.5:
-        turnover_level = "高"
+        volume_level = "高"
     elif current < avg_20 * 0.5:
-        turnover_level = "低"
+        volume_level = "低"
     else:
-        turnover_level = "中"
-    
-    # 判断换手率趋势（最近5日 vs 前5日）
-    if len(turnovers) >= 10:
-        prev_5 = turnovers[-10:-5]
+        volume_level = "中"
+
+    # 判断成交量趋势（最近5日 vs 前5日）
+    if len(volumes) >= 10:
+        prev_5 = volumes[-10:-5]
         avg_prev_5 = sum(prev_5) / len(prev_5)
         avg_recent_5 = sum(recent_5) / len(recent_5)
-        
+
         if avg_recent_5 > avg_prev_5 * 1.2:
-            turnover_trend = "上升"
+            volume_trend = "上升"
         elif avg_recent_5 < avg_prev_5 * 0.8:
-            turnover_trend = "下降"
+            volume_trend = "下降"
         else:
-            turnover_trend = "平稳"
+            volume_trend = "平稳"
     else:
-        turnover_trend = "数据不足"
-    
-    # 判断市场位置（结合价格和换手率）
-    # 高位特征：价格高位 + 高换手率（可能是出货）
-    # 低位特征：价格低位 + 低换手率（可能是底部）
-    # 震荡特征：换手率平稳
-    
-    prices = [item.get("close", 0) for item in kline_data if item.get("close", 0) > 0]
+        volume_trend = "数据不足"
+
+    # 判断市场位置（结合价格和成交量）
     if prices and len(prices) >= 20:
         current_price = prices[-1]
-        avg_price_20 = sum(prices[-20:]) / 20
         max_price = max(prices[-20:])
         min_price = min(prices[-20:])
         price_range = max_price - min_price
-        
+
         if price_range > 0:
             price_position = (current_price - min_price) / price_range
         else:
             price_position = 0.5
-        
+
         # 综合判断
-        if price_position > 0.7 and turnover_level == "高":
+        if price_position > 0.7 and volume_level == "高":
             market_position = "高位"
-            analysis = f"当前换手率{current:.2f}%处于高位，价格位于20日高位区域，警惕主力出货风险"
-        elif price_position < 0.3 and turnover_level == "低":
+            analysis = f"当前成交量处于高位，价格位于20日高位区域，警惕主力出货风险"
+        elif price_position < 0.3 and volume_level == "低":
             market_position = "低位"
-            analysis = f"当前换手率{current:.2f}%处于低位，价格位于20日低位区域，可能是底部区域"
-        elif turnover_level == "中" and turnover_trend == "平稳":
+            analysis = f"当前成交量处于低位，价格位于20日低位区域，可能是底部区域"
+        elif volume_level == "中" and volume_trend == "平稳":
             market_position = "震荡"
-            analysis = f"当前换手率{current:.2f}%处于中等水平，市场处于震荡整理阶段"
-        elif turnover_level == "高" and turnover_trend == "上升":
+            analysis = f"当前成交量处于中等水平，市场处于震荡整理阶段"
+        elif volume_level == "高" and volume_trend == "上升":
             market_position = "高位"
-            analysis = f"当前换手率{current:.2f}%持续上升，市场活跃度增加，关注突破方向"
-        elif turnover_level == "低" and turnover_trend == "下降":
+            analysis = f"当前成交量持续上升，市场活跃度增加，关注突破方向"
+        elif volume_level == "低" and volume_trend == "下降":
             market_position = "低位"
-            analysis = f"当前换手率{current:.2f}%持续下降，市场活跃度降低，观望情绪浓厚"
+            analysis = f"当前成交量持续下降，市场活跃度降低，观望情绪浓厚"
         else:
             market_position = "震荡"
-            analysis = f"当前换手率{current:.2f}%，市场处于过渡阶段"
+            analysis = f"当前成交量水平，市场处于过渡阶段"
     else:
         market_position = "数据不足"
         analysis = "价格数据不足，无法判断市场位置"
-    
+
     return {
-        "avg_turnover": round(avg_20, 2),
-        "current_turnover": round(current, 2),
-        "turnover_trend": turnover_trend,
+        "avg_volume": round(avg_20, 0),
+        "current_volume": round(current, 0),
+        "volume_trend": volume_trend,
         "market_position": market_position,
-        "turnover_level": turnover_level,
-        "analysis": analysis
+        "volume_level": volume_level,
+        "analysis": analysis,
+        "has_volume_data": True
     }
 
 
@@ -909,8 +957,8 @@ async def interpret_all():
             
             rt = stock_realtime_data.get(symbol, {})
             
-            # 获取K线详细数据（含换手率）
-            kline_detail = fetcher.fetch_eastmoney_kline_detail(symbol)
+            # 获取 K 线详细数据（使用新浪 API，含成交量）
+            kline_detail = fetcher.fetch_sina_kline_detail(symbol)
             
             result = _build_interpretation_result(
                 fetcher, code, name, cost_price, prices, rt, is_fund=False,
@@ -962,8 +1010,23 @@ async def interpret_all():
                 }
                 data_source = "latest_nav"
             
+            # 场外基金：使用历史净值构建K线数据（无成交量）
+            fund_kline_detail = []
+            if prices and len(prices) >= 60:
+                # 将净值序列转为K线格式（open/close/high/low都设为净值，volume为0）
+                for i, nav in enumerate(prices[-60:]):
+                    fund_kline_detail.append({
+                        "date": "",  # 基金净值无日期信息
+                        "open": nav,
+                        "close": nav,
+                        "high": nav,
+                        "low": nav,
+                        "volume": 0,
+                    })
+            
             result = _build_interpretation_result(
-                fetcher, code, name, cost_price, prices, rt, is_fund=True, data_source=data_source
+                fetcher, code, name, cost_price, prices, rt, is_fund=True, data_source=data_source,
+                kline_detail=fund_kline_detail if fund_kline_detail else None
             )
             if result:
                 results.append(result)
@@ -1124,14 +1187,14 @@ def _build_interpretation_result(fetcher, code, name, cost_price, prices, rt, is
         except Exception as e:
             print(f"Error fetching news for {name}: {e}")
         
-        # K线数据和换手率分析
+        # K线数据和成交量分析
         kline_chart_data = []
-        turnover_analysis = {
-            "avg_turnover": 0,
-            "current_turnover": 0,
-            "turnover_trend": "无数据",
+        volume_analysis = {
+            "avg_volume": 0,
+            "current_volume": 0,
+            "volume_trend": "无数据",
             "market_position": "无数据",
-            "turnover_level": "无数据",
+            "volume_level": "无数据",
             "analysis": "无K线详细数据",
         }
         
@@ -1145,11 +1208,10 @@ def _build_interpretation_result(fetcher, code, name, cost_price, prices, rt, is
                     "high": round(item.get("high", 0), 3),
                     "low": round(item.get("low", 0), 3),
                     "volume": item.get("volume", 0),
-                    "turnover": round(item.get("turnover", 0), 2),
                 })
             
-            # 换手率分析
-            turnover_analysis = analyze_turnover_rate(kline_detail)
+            # 成交量分析
+            volume_analysis = analyze_volume_rate(kline_detail)
         
         return {
             "code": code,
@@ -1175,7 +1237,7 @@ def _build_interpretation_result(fetcher, code, name, cost_price, prices, rt, is
             },
             "data_source": data_source,
             "kline_chart": kline_chart_data,
-            "turnover_analysis": turnover_analysis,
+            "volume_analysis": volume_analysis,
         }
     except Exception as e:
         print(f"Error building interpretation for {name} ({code}): {e}")

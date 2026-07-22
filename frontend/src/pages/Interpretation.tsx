@@ -150,14 +150,13 @@ interface InterpretationResult {
     high: number;
     low: number;
     volume: number;
-    turnover: number;
   }[];
-  turnover_analysis?: {
-    avg_turnover: number;
-    current_turnover: number;
-    turnover_trend: string;
+  volume_analysis?: {
+    avg_volume: number;
+    current_volume: number;
+    volume_trend: string;
     market_position: string;
-    turnover_level: string;
+    volume_level: string;
     analysis: string;
   };
 }
@@ -899,11 +898,11 @@ export function Interpretation() {
                   </div>
                 )}
 
-                {/* K线图和换手率分析 */}
-                {selectedResult.kline_chart && selectedResult.kline_chart.length > 0 && selectedResult.turnover_analysis && (
+                {/* K线图和成交量分析 */}
+                {selectedResult.kline_chart && selectedResult.kline_chart.length > 0 && selectedResult.volume_analysis && (
                   <KLineChart
                     data={selectedResult.kline_chart}
-                    turnoverAnalysis={selectedResult.turnover_analysis}
+                    volumeAnalysis={selectedResult.volume_analysis}
                   />
                 )}
 
