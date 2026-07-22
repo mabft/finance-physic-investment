@@ -141,6 +141,7 @@ interface InterpretationResult {
   combined_analysis: CombinedAnalysis;
   trading_strategy: TradingStrategy;
   news: NewsData;
+  data_source?: string;
 }
 
 interface PortfolioSummary {
@@ -884,6 +885,18 @@ export function Interpretation() {
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
                     <DollarSign className="w-5 h-5 text-green-600" />
                     当日行情数据
+                    {selectedResult.data_source && (
+                      <span className={`ml-2 text-xs px-2 py-1 rounded-full ${
+                        selectedResult.data_source === 'realtime_estimate' 
+                          ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                          : selectedResult.data_source === 'latest_nav'
+                          ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                          : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-400'
+                      }`}>
+                        {selectedResult.data_source === 'realtime_estimate' ? '实时估值' : 
+                         selectedResult.data_source === 'latest_nav' ? '最新净值' : '历史数据'}
+                      </span>
+                    )}
                   </h3>
                   {selectedResult.daily_data && selectedResult.daily_data.current_price > 0 && (
                     <>

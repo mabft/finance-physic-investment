@@ -815,20 +815,36 @@ async def interpret_all():
             if not prices or len(prices) < 60:
                 continue
             
-            # 获取基金实时估值
+            # 获取基金实时估值，失败则回退到最新历史净值
             nav_data = fetcher.fetch_fund_nav(code)
             rt = {}
-            if nav_data:
+            data_source = "historical"  # 默认标注为历史数据
+            
+            if nav_data and nav_data.get("gsz", 0):
+                # 有实时估值
                 rt = {
                     "current": nav_data.get("gsz", 0),
                     "prev_close": nav_data.get("dwjz", 0),
                     "open": nav_data.get("dwjz", 0),
                     "high": nav_data.get("gsz", 0),
-                    "low": nav_data.get("gsz", 0),
+                    "low": nav_data.get("dwjz", 0),
                 }
+                data_source = "realtime_estimate"
+            elif prices:
+                # 无实时估值，使用最新历史净值作为参考
+                latest_nav = prices[-1]
+                prev_nav = prices[-2] if len(prices) >= 2 else prices[-1]
+                rt = {
+                    "current": latest_nav,
+                    "prev_close": prev_nav,
+                    "open": prev_nav,
+                    "high": latest_nav,
+                    "low": prev_nav,
+                }
+                data_source = "latest_nav"
             
             result = _build_interpretation_result(
-                fetcher, code, name, cost_price, prices, rt, is_fund=True
+                fetcher, code, name, cost_price, prices, rt, is_fund=True, data_source=data_source
             )
             if result:
                 results.append(result)
@@ -843,8 +859,10 @@ async def interpret_all():
         return {"error": str(e)}, 500
 
 
-def _build_interpretation_result(fetcher, code, name, cost_price, prices, rt, is_fund):
-    """构建单个持仓的解读结果"""
+def _build_interpretation_result(fetcher, code, name, cost_price, prices, rt, is_fund, data_source=None):
+    """构建单个持仓的解读结果
+    data_source: "realtime_estimate"=实时估值, "latest_nav"=最新历史净值, None=股票实时数据
+    """
     from physics_metrics import compute_all_metrics, classify_market_state, screen_score, position_multiplier
     
     try:
@@ -1008,6 +1026,7 @@ def _build_interpretation_result(fetcher, code, name, cost_price, prices, rt, is
                 "summary": news_summary,
                 "articles": news_data,
             },
+            "data_source": data_source,
         }
     except Exception as e:
         print(f"Error building interpretation for {name} ({code}): {e}")
