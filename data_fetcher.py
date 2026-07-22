@@ -63,6 +63,54 @@ class DataFetcher:
             print(f"Error fetching Sina K-line for {symbol}: {e}")
             return []
 
+    def fetch_eastmoney_kline_detail(self, symbol, datalen=KLINE_DATA_LEN):
+        """
+        通过东方财富API获取日K线详细数据（含成交量、换手率）
+        symbol: sh600036 / sz002049 格式
+        返回: [{"date", "open", "close", "high", "low", "volume", "amount", "turnover"}, ...]
+        """
+        # 转换 symbol 为 eastmoney secid 格式
+        if symbol.startswith('sh'):
+            secid = f"1.{symbol[2:]}"
+        elif symbol.startswith('sz'):
+            secid = f"0.{symbol[2:]}"
+        else:
+            return []
+
+        url = (f"https://push2his.eastmoney.com/api/qt/stock/kline/get?"
+               f"secid={secid}&fields1=f1,f2,f3,f4,f5,f6&"
+               f"fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&"
+               f"klt=101&fqt=1&end=20500101&limit={datalen}")
+        headers = API_HEADERS["EastMoney"].copy()
+        try:
+            resp = self.session.get(url, headers=headers, timeout=15)
+            data = resp.json()
+            klines = data.get('data', {}).get('klines', [])
+            result = []
+            for line in klines:
+                parts = line.split(',')
+                if len(parts) >= 11:
+                    try:
+                        result.append({
+                            "date": parts[0],
+                            "open": float(parts[1]),
+                            "close": float(parts[2]),
+                            "high": float(parts[3]),
+                            "low": float(parts[4]),
+                            "volume": int(parts[5]),
+                            "amount": float(parts[6]),
+                            "amplitude": float(parts[7]),
+                            "change_pct": float(parts[8]),
+                            "change_amount": float(parts[9]),
+                            "turnover": float(parts[10]),
+                        })
+                    except:
+                        pass
+            return result
+        except Exception as e:
+            print(f"Error fetching EastMoney K-line detail for {symbol}: {e}")
+            return []
+
     def fetch_fund_nav(self, fund_code):
         url = f"https://fundgz.1234567.com.cn/js/{fund_code}.js"
         try:

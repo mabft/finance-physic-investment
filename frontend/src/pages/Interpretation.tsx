@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { BookOpen, TrendingUp, TrendingDown, AlertTriangle, Info, CheckCircle, XCircle, BarChart3, Thermometer, Zap, Target, RefreshCw, DollarSign, ArrowUpRight, ArrowDownRight, Minus, Wallet, ShoppingCart } from 'lucide-react';
+import { KLineChart } from '../components/KLineChart';
 
 interface DailyData {
   current_price: number;
@@ -142,6 +143,23 @@ interface InterpretationResult {
   trading_strategy: TradingStrategy;
   news: NewsData;
   data_source?: string;
+  kline_chart?: {
+    date: string;
+    open: number;
+    close: number;
+    high: number;
+    low: number;
+    volume: number;
+    turnover: number;
+  }[];
+  turnover_analysis?: {
+    avg_turnover: number;
+    current_turnover: number;
+    turnover_trend: string;
+    market_position: string;
+    turnover_level: string;
+    analysis: string;
+  };
 }
 
 interface PortfolioSummary {
@@ -879,6 +897,14 @@ export function Interpretation() {
                       </div>
                     </div>
                   </div>
+                )}
+
+                {/* K线图和换手率分析 */}
+                {selectedResult.kline_chart && selectedResult.kline_chart.length > 0 && selectedResult.turnover_analysis && (
+                  <KLineChart
+                    data={selectedResult.kline_chart}
+                    turnoverAnalysis={selectedResult.turnover_analysis}
+                  />
                 )}
 
                 <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
