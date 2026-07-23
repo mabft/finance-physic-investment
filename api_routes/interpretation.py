@@ -814,7 +814,7 @@ async def interpret_instrument(code: str):
         
         if code.startswith('6') or code.startswith('5'):
             symbol = f"sh{code}"
-        elif code.startswith('0') or code.startswith('3'):
+        elif code.startswith('0') or code.startswith('3') or code.startswith('1'):
             symbol = f"sz{code}"
         else:
             return {"error": "不支持的代码格式"}, 400
@@ -849,7 +849,7 @@ async def interpret_analysis(code: str):
         
         if code.startswith('6') or code.startswith('5'):
             symbol = f"sh{code}"
-        elif code.startswith('0') or code.startswith('3'):
+        elif code.startswith('0') or code.startswith('3') or code.startswith('1'):
             symbol = f"sz{code}"
         else:
             return {"error": "不支持的代码格式"}, 400
@@ -925,7 +925,7 @@ async def interpret_all():
                 continue
             if code.startswith('6') or code.startswith('5'):
                 symbol = f"sh{code}"
-            elif code.startswith('0') or code.startswith('3'):
+            elif code.startswith('0') or code.startswith('3') or code.startswith('1'):
                 symbol = f"sz{code}"
             else:
                 continue

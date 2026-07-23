@@ -24,6 +24,12 @@ INSTRUMENTS = {
         {"code": "601333", "name": "广深铁路", "prefix": "sh", "is_etf": False},
         {"code": "002049", "name": "紫光国微", "prefix": "sz", "is_etf": False},
         {"code": "588000", "name": "科创50ETF华夏", "prefix": "sh", "is_etf": True},
+        {"code": "515880", "name": "通信ETF国泰", "prefix": "sh", "is_etf": True},
+        {"code": "159669", "name": "绿色电力ETF国泰", "prefix": "sz", "is_etf": True},
+        {"code": "561560", "name": "电力ETF华泰柏瑞", "prefix": "sh", "is_etf": True},
+        {"code": "512400", "name": "有色金属ETF南方", "prefix": "sh", "is_etf": True},
+        {"code": "512480", "name": "半导体ETF国联安", "prefix": "sh", "is_etf": True},
+        {"code": "159995", "name": "芯片ETF华夏", "prefix": "sz", "is_etf": True},
     ],
     "场外": [
         {"code": "025833", "name": "天弘电网设备C", "is_fund": True},
@@ -73,6 +79,12 @@ PORTFOLIO = {
     "008164": {"cost_price": 1.0380, "quantity": 2876, "is_dca": False},
     "022930": {"cost_price": 1.3527, "quantity": 3327, "is_dca": True},
     "022907": {"cost_price": 3.9917, "quantity": 825, "is_dca": True},
+    "515880": {"cost_price": 0.825, "quantity": 1000, "is_dca": False},
+    "159669": {"cost_price": 1.2, "quantity": 1000, "is_dca": True},
+    "561560": {"cost_price": 1.33, "quantity": 1000, "is_dca": False},
+    "512400": {"cost_price": 1.78, "quantity": 1000, "is_dca": False},
+    "512480": {"cost_price": 1.18, "quantity": 1000, "is_dca": False},
+    "159995": {"cost_price": 1.33, "quantity": 1000, "is_dca": False},
 }
 
 FEISHU_CONFIG = {

@@ -374,9 +374,11 @@ class DataFetcher:
         code_to_symbol = {}
         for holding in stock_holdings:
             code = holding.get('code', '')
-            if (code.startswith('6') or code.startswith('5')) and len(code) == 6:
+            if len(code) != 6:
+                continue
+            if code.startswith('6') or code.startswith('5'):
                 symbol = f"sh{code}"
-            elif (code.startswith('0') or code.startswith('3')) and len(code) == 6:
+            elif code.startswith('0') or code.startswith('3') or code.startswith('1'):
                 symbol = f"sz{code}"
             else:
                 continue
